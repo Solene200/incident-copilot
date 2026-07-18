@@ -173,6 +173,7 @@ uv run python scripts/render_graph.py --check docs/GRAPH_CURRENT.md
 
 ## 文档
 
+- [中文教学版完整文档](docs/learning/INCIDENT_COPILOT_LEARNING_GUIDE.md)
 - [产品需求](docs/PRD.md)
 - [总体架构](docs/ARCHITECTURE.md)
 - [Graph 设计](docs/GRAPH_DESIGN.md)
