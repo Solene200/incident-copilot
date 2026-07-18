@@ -1,4 +1,4 @@
-"""Offline-first knowledge indexing and retrieval components."""
+"""离线优先的知识索引和检索组件。"""
 
 from incident_copilot.rag.bm25 import BM25Index
 from incident_copilot.rag.bootstrap import build_fixture_retriever

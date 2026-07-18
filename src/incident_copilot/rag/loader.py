@@ -1,4 +1,4 @@
-"""Safe loader for repository knowledge documents with TOML frontmatter."""
+"""安全加载带 TOML Frontmatter 的仓库知识文档。"""
 
 import tomllib
 from pathlib import Path
@@ -13,17 +13,17 @@ MAX_KNOWLEDGE_FILE_BYTES = 1_000_000
 
 
 class KnowledgeLoadError(ValueError):
-    """A knowledge source could not be parsed into the validated document contract."""
+    """知识源无法解析为经过校验的文档契约。"""
 
 
 class MarkdownDocumentLoader:
-    """Load only UTF-8 Markdown files contained by one configured root."""
+    """只加载指定根目录内的 UTF-8 Markdown 文件。"""
 
     def __init__(self, root: Path) -> None:
         self._root = root.resolve()
 
     def load(self) -> tuple[KnowledgeDocument, ...]:
-        """Load a stable ordered corpus and reject duplicate document IDs."""
+        """加载顺序稳定的语料,并拒绝重复文档 ID。"""
         if not self._root.is_dir():
             raise KnowledgeLoadError(f"knowledge directory does not exist: {self._root}")
 

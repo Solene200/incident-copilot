@@ -1,4 +1,4 @@
-"""Heading-aware deterministic Markdown chunking with bounded overlap."""
+"""感知标题且具有有界重叠的确定性 Markdown 切分。"""
 
 import re
 from dataclasses import dataclass
@@ -16,7 +16,7 @@ HEADING_PATTERN = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 
 
 def tokenize(value: str) -> tuple[str, ...]:
-    """Tokenize English identifiers and individual CJK characters deterministically."""
+    """确定性切分英文标识符和单个中日韩字符。"""
     return tuple(match.group(0).casefold() for match in SEARCH_TOKEN_PATTERN.finditer(value))
 
 
@@ -27,7 +27,7 @@ class _Section:
 
 
 class MarkdownSplitter:
-    """Split within Markdown sections and retain citation/metadata lineage."""
+    """在 Markdown 章节内切分并保留引用和元数据血缘。"""
 
     def __init__(self, *, max_tokens: int = 120, overlap_tokens: int = 20) -> None:
         if max_tokens < 20 or max_tokens > 2_000:
@@ -40,14 +40,14 @@ class MarkdownSplitter:
     def split_documents(
         self, documents: tuple[KnowledgeDocument, ...]
     ) -> tuple[KnowledgeChunk, ...]:
-        """Split a stable document sequence into globally stable chunk order."""
+        """切分稳定文档序列并生成全局稳定的 Chunk 顺序。"""
         chunks: list[KnowledgeChunk] = []
         for document in sorted(documents, key=lambda item: item.document_id):
             chunks.extend(self.split(document))
         return tuple(chunks)
 
     def split(self, document: KnowledgeDocument) -> tuple[KnowledgeChunk, ...]:
-        """Split one document without crossing explicit Markdown heading boundaries."""
+        """切分单份文档,但不跨越明确的 Markdown 标题边界。"""
         chunk_texts: list[tuple[tuple[str, ...], str]] = []
         for section in self._sections(document):
             for text in self._split_section(section):

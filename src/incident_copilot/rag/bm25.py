@@ -1,4 +1,4 @@
-"""Small deterministic BM25 index for offline fixture retrieval."""
+"""供离线 Fixture 检索使用的小型确定性 BM25 索引。"""
 
 import math
 from collections import Counter
@@ -14,7 +14,7 @@ from incident_copilot.rag.splitter import tokenize
 
 
 class BM25Index:
-    """In-memory BM25 implementation with stable tie-breaking and metadata filtering."""
+    """具有稳定同分排序和元数据过滤能力的内存 BM25 实现。"""
 
     def __init__(self, *, k1: float = 1.5, b: float = 0.75) -> None:
         if k1 <= 0:
@@ -34,7 +34,7 @@ class BM25Index:
         return len(self._chunks)
 
     def rebuild(self, chunks: Sequence[KnowledgeChunk]) -> int:
-        """Replace the index, de-duplicating identical chunk IDs deterministically."""
+        """替换索引,并确定性去除重复的 Chunk ID。"""
         self._chunks = {chunk.chunk_id: chunk for chunk in chunks}
         self._term_frequencies.clear()
         self._document_frequencies.clear()
@@ -58,7 +58,7 @@ class BM25Index:
         top_k: int,
         metadata_filter: MetadataFilter,
     ) -> tuple[ScoredChunk, ...]:
-        """Return positive-scoring lexical candidates after metadata filtering."""
+        """返回经过元数据过滤且分数为正的词法候选。"""
         if top_k < 1 or top_k > 200:
             raise ValueError("BM25 top_k must be between 1 and 200")
         query_terms = tuple(dict.fromkeys(tokenize(query)))

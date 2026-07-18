@@ -1,4 +1,4 @@
-"""Adapter exposing hybrid RAG through the Phase 2 KnowledgeProvider port."""
+"""通过 Phase 2 KnowledgeProvider 端口提供混合 RAG 的 Adapter。"""
 
 import asyncio
 from collections.abc import Sequence
@@ -16,7 +16,7 @@ from incident_copilot.tools.schemas import (
 
 
 class RagKnowledgeProvider:
-    """Convert citation-preserving hybrid hits into the shared Evidence contract."""
+    """把保留引用的混合检索结果转换为共享 Evidence 契约。"""
 
     def __init__(self, retriever: HybridRetriever) -> None:
         self._retriever = retriever

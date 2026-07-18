@@ -1,4 +1,4 @@
-"""Deterministic local embedding used to verify retrieval data flow."""
+"""用于验证检索数据流的确定性本地 Embedding。"""
 
 import hashlib
 import math
@@ -8,10 +8,10 @@ from incident_copilot.rag.splitter import tokenize
 
 
 class FakeEmbedding:
-    """Versioned signed hash embedding with no model or network dependency.
+    """不依赖模型或网络的版本化有符号哈希 Embedding。
 
-    It is intentionally not presented as a semantic-quality embedding. Query rewrite and
-    lexical retrieval carry most of the fixture relevance signal.
+    该实现不会被描述为具有语义质量的 Embedding。Fixture 的大部分相关性信号由查询改写
+    和词法检索承担。
     """
 
     model_name = "fake-signed-hash"
@@ -23,7 +23,7 @@ class FakeEmbedding:
         self.dimension = dimension
 
     def embed(self, text: str) -> tuple[float, ...]:
-        """Map normalized tokens to a stable unit-length signed hash vector."""
+        """把规范化 Token 映射为稳定的单位长度有符号哈希向量。"""
         tokens = tokenize(text)
         if not tokens:
             raise ValueError("cannot embed text without supported tokens")
@@ -39,5 +39,5 @@ class FakeEmbedding:
         return tuple(value / norm for value in values)
 
     def embed_many(self, texts: Sequence[str]) -> tuple[tuple[float, ...], ...]:
-        """Embed a stable sequence without batching side effects."""
+        """对稳定序列生成 Embedding,且不产生批处理副作用。"""
         return tuple(self.embed(text) for text in texts)

@@ -1,4 +1,4 @@
-"""Validated knowledge document, chunk, and retrieval value objects."""
+"""经过校验的知识文档、Chunk 和检索值对象。"""
 
 import hashlib
 import math
@@ -21,7 +21,7 @@ SEARCH_TOKEN_PATTERN = re.compile(r"[A-Za-z0-9_.:/-]+|[\u4e00-\u9fff]")
 
 
 def normalize_document_text(value: str) -> str:
-    """Normalize line endings and trailing whitespace before hashing or splitting."""
+    """计算哈希或切分前规范化换行符和行尾空白。"""
     lines = [line.rstrip() for line in value.replace("\r\n", "\n").replace("\r", "\n").split("\n")]
     normalized = "\n".join(lines).strip()
     if not normalized:
@@ -30,12 +30,12 @@ def normalize_document_text(value: str) -> str:
 
 
 def content_sha256(value: str) -> str:
-    """Return the canonical SHA-256 used for document and chunk idempotency."""
+    """返回用于文档和 Chunk 幂等性的规范 SHA-256。"""
     return hashlib.sha256(normalize_document_text(value).encode("utf-8")).hexdigest()
 
 
 class DocumentType(StrEnum):
-    """Knowledge categories supported by the Phase 3 corpus."""
+    """Phase 3 语料支持的知识类别。"""
 
     RUNBOOK = "runbook"
     SERVICE = "service"
@@ -46,7 +46,7 @@ class DocumentType(StrEnum):
 
 
 class KnowledgeDocument(DomainModel):
-    """One validated source document before semantic chunking."""
+    """语义切分前的一份已校验源文档。"""
 
     document_id: str = Field(pattern=r"^doc_[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
     document_type: DocumentType
@@ -99,7 +99,7 @@ class KnowledgeDocument(DomainModel):
 
 
 class KnowledgeChunk(DomainModel):
-    """Bounded citation-preserving unit produced by semantic splitting."""
+    """语义切分生成的有界且保留引用的单元。"""
 
     chunk_id: str = Field(pattern=r"^chunk_[A-Za-z0-9][A-Za-z0-9_-]{0,160}$")
     document_id: str = Field(pattern=r"^doc_[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
@@ -145,7 +145,7 @@ class KnowledgeChunk(DomainModel):
 
 
 class EmbeddedChunk(DomainModel):
-    """Knowledge chunk paired with one versioned embedding vector."""
+    """与一个版本化 Embedding 向量配对的知识 Chunk。"""
 
     chunk: KnowledgeChunk
     embedding: tuple[float, ...] = Field(min_length=1, max_length=4_096)
@@ -162,14 +162,14 @@ class EmbeddedChunk(DomainModel):
 
 
 class ScoredChunk(DomainModel):
-    """Backend-local candidate before reciprocal-rank fusion."""
+    """倒数排名融合前的后端内部候选。"""
 
     chunk: KnowledgeChunk
     score: float = Field(ge=0.0)
 
 
 class IngestResult(DomainModel):
-    """Measured index state after one idempotent ingest operation."""
+    """一次幂等摄取操作后实际测量的索引状态。"""
 
     input_document_count: int = Field(ge=0)
     indexed_document_count: int = Field(ge=0)
@@ -178,7 +178,7 @@ class IngestResult(DomainModel):
 
 
 class MetadataFilter(DomainModel):
-    """Allow-listed metadata constraints shared by every retrieval backend."""
+    """所有检索后端共享的白名单元数据约束。"""
 
     services: tuple[str, ...] = Field(default_factory=tuple, max_length=20)
     environments: tuple[str, ...] = Field(default_factory=tuple, max_length=20)
@@ -209,7 +209,7 @@ class MetadataFilter(DomainModel):
 
 
 class SearchQuery(DomainModel):
-    """Bounded retrieval request independent of a specific index backend."""
+    """不依赖具体索引后端的有界检索请求。"""
 
     query: str = Field(min_length=2, max_length=512)
     top_k: int = Field(default=5, ge=1, le=50)
@@ -224,7 +224,7 @@ class SearchQuery(DomainModel):
 
 
 class SearchHit(DomainModel):
-    """Ranked hybrid result with its original resolvable citation."""
+    """带有原始可解析引用的排序混合检索结果。"""
 
     chunk: KnowledgeChunk
     score: float = Field(ge=0.0, le=1.0)
@@ -238,7 +238,7 @@ class SearchHit(DomainModel):
 
 
 class RetrievalResult(DomainModel):
-    """Deterministic retrieval response including transparent query rewrite."""
+    """包含透明查询改写的确定性检索响应。"""
 
     original_query: str = Field(min_length=2, max_length=512)
     rewritten_query: str = Field(min_length=2, max_length=1_024)
@@ -249,7 +249,7 @@ class RetrievalResult(DomainModel):
 
 
 def chunk_matches_filter(chunk: KnowledgeChunk, metadata_filter: MetadataFilter) -> bool:
-    """Apply one identical metadata policy to lexical and vector candidates."""
+    """对词法候选和向量候选应用完全相同的元数据策略。"""
     if metadata_filter.services and not set(metadata_filter.services).intersection(
         chunk.service_tags
     ):

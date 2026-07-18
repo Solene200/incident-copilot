@@ -1,4 +1,4 @@
-"""Vector store port with in-memory and parameterized pgvector adapters."""
+"""具有内存和参数化 pgvector Adapter 的向量存储端口。"""
 
 import json
 import math
@@ -16,14 +16,14 @@ from incident_copilot.rag.schemas import (
 
 
 class VectorStore(Protocol):
-    """Replaceable vector index contract used by HybridRetriever."""
+    """HybridRetriever 使用的可替换向量索引契约。"""
 
     def delete_documents(self, document_ids: Sequence[str]) -> int:
-        """Delete all vectors belonging to the supplied document IDs."""
+        """删除属于指定文档 ID 的全部向量。"""
         ...
 
     def upsert(self, records: Sequence[EmbeddedChunk]) -> int:
-        """Insert or replace records by stable chunk ID."""
+        """按稳定 Chunk ID 插入或替换记录。"""
         ...
 
     def replace_documents(
@@ -31,7 +31,7 @@ class VectorStore(Protocol):
         document_ids: Sequence[str],
         records: Sequence[EmbeddedChunk],
     ) -> int:
-        """Atomically replace all vectors belonging to the supplied documents."""
+        """原子替换属于指定文档的全部向量。"""
         ...
 
     def search(
@@ -43,12 +43,12 @@ class VectorStore(Protocol):
         top_k: int,
         metadata_filter: MetadataFilter,
     ) -> tuple[ScoredChunk, ...]:
-        """Return vector candidates in descending similarity order."""
+        """按相似度降序返回向量候选。"""
         ...
 
 
 class InMemoryVectorStore:
-    """Deterministic cosine vector index for default offline operation."""
+    """默认离线操作使用的确定性余弦向量索引。"""
 
     def __init__(self, *, dimension: int) -> None:
         if dimension < 1:
@@ -144,29 +144,29 @@ class InMemoryVectorStore:
 
 
 class PgVectorSession(Protocol):
-    """Minimal SQL session expected by PgVectorStore.
+    """PgVectorStore 所需的最小 SQL Session。
 
-    A thin wrapper around psycopg/SQLAlchemy can implement this without making either package a
-    default project dependency.
+    可以通过 psycopg 或 SQLAlchemy 的轻量 Wrapper 实现该接口,而无需把任一包设为项目
+    默认依赖。
     """
 
     def execute(self, statement: str, parameters: Sequence[object] = ()) -> None:
-        """Execute a parameterized statement."""
+        """执行参数化语句。"""
         ...
 
     def transaction(self) -> AbstractContextManager[None]:
-        """Return a transaction boundary that rolls back when an operation fails."""
+        """返回操作失败时会回滚的事务边界。"""
         ...
 
     def fetch_all(
         self, statement: str, parameters: Sequence[object] = ()
     ) -> Sequence[Mapping[str, object]]:
-        """Execute a parameterized query and return mapping rows."""
+        """执行参数化查询并返回映射行。"""
         ...
 
 
 class PgVectorStore:
-    """Explicit pgvector SQL adapter; schema creation is never implicit."""
+    """显式 pgvector SQL Adapter,绝不隐式创建 Schema。"""
 
     def __init__(
         self, session: PgVectorSession, *, dimension: int, table: str = "knowledge_chunks"

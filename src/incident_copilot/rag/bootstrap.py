@@ -1,4 +1,4 @@
-"""Composition helpers for the deterministic repository knowledge corpus."""
+"""确定性仓库知识语料的组合辅助函数。"""
 
 from collections.abc import Callable
 from datetime import datetime
@@ -15,7 +15,7 @@ from incident_copilot.rag.vector_store import InMemoryVectorStore
 
 
 def repository_knowledge_root() -> Path:
-    """Resolve the versioned knowledge corpus independent of current working directory."""
+    """解析版本化知识语料位置,但不依赖当前工作目录。"""
     return Path(__file__).parents[3] / "data" / "knowledge"
 
 
@@ -24,7 +24,7 @@ def build_fixture_retriever(
     knowledge_root: Path | None = None,
     clock: Callable[[], datetime] | None = None,
 ) -> tuple[HybridRetriever, IngestResult]:
-    """Build and ingest the complete offline RAG pipeline with deterministic components."""
+    """使用确定性组件构造完整离线 RAG 管线并摄取知识。"""
     embedding = FakeEmbedding(dimension=64)
     retriever = HybridRetriever(
         splitter=MarkdownSplitter(max_tokens=120, overlap_tokens=20),

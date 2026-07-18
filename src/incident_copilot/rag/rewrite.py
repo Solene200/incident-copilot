@@ -1,11 +1,11 @@
-"""Transparent deterministic query rewrite for fixture retrieval."""
+"""Fixture 检索使用的透明确定性查询改写。"""
 
 import re
 from typing import ClassVar
 
 
 class QueryRewriter:
-    """Expand a small reviewed alias map without invoking an LLM."""
+    """不调用 LLM,只展开经过审核的小型别名表。"""
 
     _phrase_expansions: ClassVar[dict[str, str]] = {
         "连接池": "connection pool database",
@@ -23,7 +23,7 @@ class QueryRewriter:
     }
 
     def rewrite(self, query: str) -> str:
-        """Return normalized original terms followed by de-duplicated reviewed aliases."""
+        """依次返回规范化原始词和去重后的已审核别名。"""
         normalized = " ".join(query.strip().casefold().split())
         if len(normalized) < 2:
             raise ValueError("query must contain at least two characters")
