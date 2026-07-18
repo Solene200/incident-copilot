@@ -11,7 +11,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.types import Command
 from pydantic import JsonValue
 
-from incident_copilot.core.exceptions import ResourceConflictError
+from incident_copilot.core.exceptions import ResourceConflictError, ResourceNotFoundError
 from incident_copilot.core.logging import redact_value
 from incident_copilot.domain.evidence import EvidenceRef
 from incident_copilot.domain.incident import IncidentContext
@@ -66,11 +66,12 @@ class InvestigationService:
     ) -> tuple[InvestigationRecord, bool]:
         """Create idempotently and schedule one offline background execution."""
         now = self._clock()
-        investigation_id = f"inv_{uuid4().hex}"
+        resource_key = uuid4().hex
+        investigation_id = f"inv_{resource_key}"
         record = InvestigationRecord(
             investigation_id=investigation_id,
             incident_id=incident.incident_id,
-            thread_id=f"thread_{uuid4().hex}",
+            thread_id=f"thread_{resource_key}",
             run_id=f"run_{uuid4().hex}",
             incident=incident,
             options=options,
@@ -87,8 +88,11 @@ class InvestigationService:
         return stored, True
 
     async def get(self, investigation_id: str) -> InvestigationRecord:
-        """Return current task metadata without loading raw graph state."""
-        return await self._repository.get(investigation_id)
+        """Return task metadata, rebuilding a missing paused record from its checkpoint."""
+        try:
+            return await self._repository.get(investigation_id)
+        except ResourceNotFoundError:
+            return await self._recover_from_checkpoint(investigation_id)
 
     async def resume(
         self,
@@ -98,7 +102,7 @@ class InvestigationService:
         """Atomically claim one paused checkpoint and schedule its resume command."""
         lock = self._locks.setdefault(investigation_id, asyncio.Lock())
         async with lock:
-            record = await self._repository.get(investigation_id)
+            record = await self.get(investigation_id)
             if record.status is not InvestigationStatus.WAITING_REVIEW:
                 raise ResourceConflictError(
                     "Investigation is not waiting for review",
@@ -166,6 +170,69 @@ class InvestigationService:
                 self._tasks.pop(investigation_id, None)
 
         task.add_done_callback(remove)
+
+    async def _recover_from_checkpoint(self, investigation_id: str) -> InvestigationRecord:
+        prefix = "inv_"
+        resource_key = investigation_id.removeprefix(prefix)
+        if (
+            not investigation_id.startswith(prefix)
+            or len(resource_key) != 32
+            or any(character not in "0123456789abcdef" for character in resource_key)
+        ):
+            raise ResourceNotFoundError(
+                "Investigation was not found",
+                details={"investigation_id": investigation_id},
+            )
+        thread_id = f"thread_{resource_key}"
+        snapshot = await self._graph.aget_state(self._config(thread_id))
+        state = cast(InvestigationState, snapshot.values)
+        incident = state.get("incident")
+        if incident is None:
+            raise ResourceNotFoundError(
+                "Investigation was not found",
+                details={"investigation_id": investigation_id},
+            )
+        interrupt_value = self._interrupt_value(snapshot.tasks)
+        review_request = (
+            HumanReviewRequest.model_validate(interrupt_value)
+            if interrupt_value is not None
+            else None
+        )
+        status = (
+            InvestigationStatus.WAITING_REVIEW
+            if review_request is not None
+            else InvestigationStatus.COMPLETED
+            if not snapshot.next and state.get("final_report") is not None
+            else InvestigationStatus.PENDING
+        )
+        started_at = state.get("started_at", self._clock())
+        options = InvestigationOptions(
+            max_research_rounds=state.get("max_research_rounds", 2),
+            max_tool_calls=state.get("max_tool_calls", 14),
+            max_parallel_tools=state.get("max_parallel_tools", 7),
+            max_model_calls=state.get("max_model_calls", 20),
+            max_estimated_tokens=state.get("max_estimated_tokens", 20_000),
+            timeout_seconds=max(
+                0.001,
+                (state.get("deadline_at", started_at) - started_at).total_seconds(),
+            ),
+        )
+        recovered = InvestigationRecord(
+            investigation_id=investigation_id,
+            incident_id=incident.incident_id,
+            thread_id=thread_id,
+            run_id=f"run_{uuid4().hex}",
+            status=status,
+            incident=incident,
+            options=options,
+            request_fingerprint="0" * 64,
+            report=state.get("final_report"),
+            review_request=review_request,
+            created_at=started_at,
+            updated_at=self._clock(),
+        )
+        stored, _ = await self._repository.create(recovered)
+        return stored
 
     async def _run_initial(self, investigation_id: str) -> None:
         record = await self._repository.get(investigation_id)

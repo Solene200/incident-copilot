@@ -35,6 +35,21 @@ def build_service() -> InvestigationService:
     )
 
 
+def build_service_with_saver(
+    saver: InMemorySaver,
+    repository: InMemoryInvestigationRepository,
+) -> InvestigationService:
+    return InvestigationService(
+        graph=build_offline_investigation_graph(
+            clock=fixed_clock,
+            checkpointer=saver,
+            require_human_review=True,
+        ),
+        repository=repository,
+        clock=fixed_clock,
+    )
+
+
 @pytest.mark.asyncio
 async def test_service_pauses_streams_and_accepts_exactly_once() -> None:
     service = build_service()
@@ -159,3 +174,29 @@ async def test_service_creation_is_idempotent_and_detects_payload_conflicts() ->
             request_fingerprint="e" * 64,
             idempotency_key="stable-request",
         )
+
+
+@pytest.mark.asyncio
+async def test_rebuilt_service_recovers_paused_metadata_from_thread_checkpoint() -> None:
+    saver = InMemorySaver()
+    original = build_service_with_saver(saver, InMemoryInvestigationRepository())
+    record, _ = await original.create(
+        incident=FixtureProvider.payment_service().fixture.incident,
+        options=InvestigationOptions(),
+        request_fingerprint="f" * 64,
+        idempotency_key=None,
+    )
+    await original.wait_until_quiescent(record.investigation_id)
+
+    rebuilt = build_service_with_saver(saver, InMemoryInvestigationRepository())
+    recovered = await rebuilt.get(record.investigation_id)
+
+    assert recovered.status is InvestigationStatus.WAITING_REVIEW
+    assert recovered.thread_id == record.thread_id
+    assert recovered.report is not None
+    await rebuilt.resume(
+        record.investigation_id,
+        HumanFeedback(action=ReviewAction.ACCEPT),
+    )
+    completed = await rebuilt.wait_until_quiescent(record.investigation_id)
+    assert completed.status is InvestigationStatus.COMPLETED
