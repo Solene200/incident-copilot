@@ -437,7 +437,7 @@ uv run pytest tests/unit/graph tests/unit/tools/test_registry.py tests/integrati
 
 ### 状态
 
-`completed`（真实 PostgreSQL 跨进程集成验证因本机虚拟化不可用而保留为明确环境缺口）
+`completed`
 
 ### 开始前基线
 
@@ -487,14 +487,14 @@ uv run pytest tests/unit/graph tests/unit/tools/test_registry.py tests/integrati
 | `uv run pytest` | PASS：148 passed，0 warning |
 | `uv run python scripts/render_graph.py --check docs/GRAPH_CURRENT.md` | PASS：文档 Mermaid 与 Phase 5 实际编译 Graph 一致 |
 | 独立 Uvicorn `127.0.0.1:18765` + `scripts/run_api_demo.py` | PASS：50 个 SSE 事件；waiting_review→accept→completed；13 条 supporting evidence；初始/恢复 run ID 不同 |
-| PostgreSQL 跨进程集成 | NOT RUN：当前宿主机 Docker Desktop 无虚拟化支持且没有可用 PostgreSQL；未伪造成通过 |
+| PostgreSQL 跨进程集成 | PASS：Docker PostgreSQL 18.4 / pgvector 0.8.5；应用进程重建后同一 thread 从 waiting_review 恢复并完成；实际 11 checkpoint rows / 102 write rows |
 
 第一次 TCP 尝试使用端口 8765 时命中一个已有/非本次路由服务，创建接口返回 404，因此没有计为通过；改用独占端口 18765、先校验本次进程存活及 OpenAPI 含 Phase 5 路由后，演示真实通过。上述测试耗时和事件数只作为本机固定 fixture 运行记录，不是性能、准确率或扩展性声明。
 
 ### 已知问题
 
 - `InMemoryInvestigationRepository` 不持久化幂等键和历史 SSE 事件。服务可从 checkpoint 重建暂停/完成任务及报告，但重建后的旧事件历史不可重放；生产高可用仍需要持久化任务/事件 Repository。
-- 官方 PostgreSQL checkpointer adapter、可选依赖、DSN/extra 错误和 `setup()` 路径已实现，但本机没有真实 PostgreSQL，因此数据库 schema、断线重连和真实跨进程恢复未验证。
+- PostgreSQL checkpointer 已完成单机 Docker 跨进程验证，但尚未覆盖数据库断线重连、主从切换、连接池压力或多应用实例并发抢占。
 - 后台调查使用应用进程内 `asyncio.Task`，没有分布式队列、worker lease、取消 API 或多实例任务抢占；这些不应被描述成生产任务调度系统。
 - 默认模型、embedding、Provider 和知识索引仍是确定性 fixture/fake；报告内容不代表真实诊断准确率，Phase 5 没有运行 Evaluation。
 - SSE 事件存储当前为进程内无界列表，适合小型演示；生产部署需要事件保留、分页/压缩和慢消费者策略。
@@ -517,4 +517,13 @@ uv run python scripts/run_api_demo.py
 
 ### 下一阶段建议
 
-只有用户明确要求 Phase 6 后才开始 Evaluation 和 Agent 可观测性。进入前保持 Phase 5 API/事件/报告 Schema 稳定；先设计版本化离线评估样例和可手算 evaluator，不把本阶段 148 项测试通过率、13 条证据或 50 个事件包装成诊断准确率或性能指标。真实 PostgreSQL/任务 Repository 加固仍是独立的生产化缺口，不应借 Phase 6 评估代码掩盖。
+只有用户明确要求 Phase 6 后才开始 Evaluation 和 Agent 可观测性。进入前保持 Phase 5 API/事件/报告 Schema 稳定；先设计版本化离线评估样例和可手算 evaluator，不把本阶段 148 项测试通过率、13 条证据或 50 个事件包装成诊断准确率或性能指标。持久化任务/事件 Repository 仍是独立的生产化缺口，不应借 Phase 6 评估代码掩盖。
+
+## Phase 5 环境加固记录
+
+- 2026-07-18：确认 AMD-V/BIOS 虚拟化已开启，Windows Hypervisor 与 VBS 正在运行，Docker Desktop 4.82.0 Linux Engine 可执行容器；先前的 “Virtualization support not detected” 状态已不再存在。
+- 使用官方 `pgvector/pgvector:0.8.5-pg18-trixie` 创建 `incident-copilot-postgres`，仅绑定 `127.0.0.1:5432`，持久化到 `incident-copilot-postgres-data`，healthcheck 通过；数据库为 PostgreSQL 18.4，`vector` 扩展为 0.8.5。
+- Windows 首次安装官方 saver 时发现纯 `psycopg` 缺少系统 libpq；`postgres` extra 已显式增加 `psycopg[binary] 3.3.4` 并更新锁文件。
+- Windows 默认 ProactorEventLoop 不被异步 psycopg 支持；新增 `python -m incident_copilot.server`，使用 `SelectorEventLoop` 承载 Uvicorn/PostgreSQL backend。
+- 真实验证中，第一个应用进程将调查暂停为 `waiting_review` 后完全退出；第二个进程用相同 PostgreSQL checkpoint 恢复同一 `thread_id`，接受反馈后进入 `completed`。查询得到 11 条 checkpoint、102 条 checkpoint write。
+- 环境加固后的最终门禁：锁文件解析 66 个包，PostgreSQL extra 环境检查 65 个已安装包；Ruff、89 个文件 mypy 和 148 项全量测试通过。Docker client/server 均为 29.6.1，数据库容器状态为 running/healthy。

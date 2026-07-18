@@ -244,7 +244,7 @@
 - [x] 默认 `InMemorySaver` 零网络运行；可选依赖锁定官方 `langgraph-checkpoint-postgres` 3.1.0，PostgreSQL backend 在 FastAPI lifespan 内持有 `AsyncPostgresSaver` 并先执行 `setup()`，缺少 DSN/extra 时显式配置失败。
 - [x] 本地真实 TCP 演示完成创建→50 个 SSE 事件→高风险暂停→审核接受→报告，初始与恢复 `run_id` 不同；该次数只描述固定 fixture 演示，不是性能或质量评估。
 - [x] `uv sync`、`uv lock --check`、Ruff、`mypy src tests scripts`、18 项 Phase 5 定向测试、148 项全量测试和源码 Mermaid 一致性检查通过；默认测试没有调用在线模型、在线 embedding、付费 API 或数据库。
-- [ ] 当前宿主机 Docker Desktop 因虚拟化不可用，未运行真实 PostgreSQL 跨进程集成测试；只验证了官方 adapter 装配、schema setup 契约以及共享 saver 下的新 Graph/新仓储恢复，不能把真实数据库项标为通过。
+- [x] 环境加固后确认 BIOS 虚拟化、Windows Hypervisor、WSL2 与 Docker Linux Engine 正常；Docker PostgreSQL 18.4 / pgvector 0.8.5 上完成真实跨应用进程恢复：第一个进程暂停，第二个进程以同一 thread 恢复并接受审核完成。数据库实际写入 11 条 checkpoint 和 102 条 checkpoint write。
 
 ## 9. Phase 6：Evaluation 和 Agent 可观测性
 

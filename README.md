@@ -2,7 +2,7 @@
 
 IncidentCopilot 是一个面向 AI 应用开发岗位面试与作品集展示的多源可观测性故障诊断项目。当前仓库已完成 Phase 5：在有界 LangGraph 并行调查循环之上，提供异步任务 API、SSE、checkpoint 与高风险修复人工审核。
 
-默认路径仍完全离线，不包含真实可观测平台、在线模型调用、自动执行修复或已验证的 PostgreSQL 部署。PostgreSQL checkpointer 是显式可选目标；当前机器因 Docker 虚拟化不可用，未运行真实数据库集成测试。
+默认路径仍完全离线，不包含真实可观测平台、在线模型调用或自动执行修复。PostgreSQL checkpointer 是显式可选目标；当前 Windows 开发机已使用 Docker PostgreSQL 18.4 / pgvector 0.8.5 完成跨应用进程的暂停与恢复验证。
 
 ## 环境要求
 
@@ -111,7 +111,16 @@ uv run python scripts/run_api_demo.py
 uv sync --extra postgres
 set INCIDENT_COPILOT_CHECKPOINT_BACKEND=postgres
 set INCIDENT_COPILOT_POSTGRES_DSN=postgresql://user:password@localhost:5432/incident_copilot
-uv run uvicorn incident_copilot.main:app
+uv run --extra postgres python -m incident_copilot.server
+```
+
+该服务器入口在 Windows 上使用 psycopg 异步连接所需的 `SelectorEventLoop`；默认内存后端仍可使用普通的 `uv run uvicorn incident_copilot.main:app --reload`。
+
+本机开发数据库容器名为 `incident-copilot-postgres`，持久化卷为 `incident-copilot-postgres-data`，仅绑定 `127.0.0.1:5432`。常用检查命令：
+
+```text
+docker ps --filter name=incident-copilot-postgres
+docker exec incident-copilot-postgres pg_isready -U incident_copilot -d incident_copilot
 ```
 
 任务元数据仓储在 Phase 5 仍是进程内实现；服务可通过与 `investigation_id` 共享 UUID 的稳定 `thread_id` 从 checkpoint 重建暂停/完成任务，但幂等键和历史 SSE 事件不会随之恢复。因此仅切换 PostgreSQL checkpointer 不等于完整高可用部署，生产环境仍需要持久化 Investigation Repository。API/SSE 只返回公开投影与脱敏事件，不返回原始 Graph State。
