@@ -1,4 +1,4 @@
-"""Tests for environment-backed application settings."""
+"""环境变量支持的应用配置测试。"""
 
 import pytest
 from pydantic import SecretStr, ValidationError

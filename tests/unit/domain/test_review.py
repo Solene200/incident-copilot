@@ -1,4 +1,4 @@
-"""Validation tests for human review commands."""
+"""人工审核命令校验测试。"""
 
 import pytest
 from pydantic import ValidationError

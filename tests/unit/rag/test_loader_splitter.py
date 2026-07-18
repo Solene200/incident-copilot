@@ -1,4 +1,4 @@
-"""Tests for validated knowledge loading and heading-aware splitting."""
+"""已校验知识加载和标题感知切分测试。"""
 
 from datetime import UTC, datetime
 from pathlib import Path

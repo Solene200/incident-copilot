@@ -1,4 +1,4 @@
-"""Version and path safety tests for the checked-in evaluation dataset."""
+"""仓库内评估数据集的版本和路径安全测试。"""
 
 import pytest
 from pydantic import ValidationError

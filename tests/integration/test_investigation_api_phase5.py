@@ -1,4 +1,4 @@
-"""HTTP and SSE acceptance tests for the Phase 5 investigation lifecycle."""
+"""Phase 5 调查生命周期的 HTTP 和 SSE 验收测试。"""
 
 import json
 import time

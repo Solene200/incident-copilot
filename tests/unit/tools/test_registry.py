@@ -1,4 +1,4 @@
-"""Failure, retry, validation, and registration tests for ToolRegistry."""
+"""ToolRegistry 的失败、重试、校验和注册测试。"""
 
 import asyncio
 from collections.abc import Awaitable, Callable, Sequence

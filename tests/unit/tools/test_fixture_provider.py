@@ -1,4 +1,4 @@
-"""Contract tests for the deterministic multi-source fixture provider."""
+"""确定性多数据源 Fixture Provider 契约测试。"""
 
 import hashlib
 import json

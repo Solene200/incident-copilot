@@ -1,4 +1,4 @@
-"""Tests for structured logging and recursive redaction."""
+"""结构化日志和递归脱敏测试。"""
 
 import json
 import logging

@@ -1,4 +1,4 @@
-"""Application lifecycle tests over a real checkpointed offline graph."""
+"""基于真实离线 Checkpoint Graph 的应用生命周期测试。"""
 
 import asyncio
 from collections.abc import AsyncIterator
@@ -55,7 +55,7 @@ def build_service_with_saver(
 
 
 class MissingReportGraph:
-    """Minimal graph double that terminates without satisfying the report contract."""
+    """未满足报告契约便结束的最小 Graph 测试替身。"""
 
     async def astream(self, *args: object, **kwargs: object) -> AsyncIterator[dict[str, object]]:
         del args
@@ -68,7 +68,7 @@ class MissingReportGraph:
 
 
 class FailFirstUpdateRepository(InMemoryInvestigationRepository):
-    """Fail once before graph execution so initialization recovery is exercised."""
+    """在 Graph 执行前失败一次,用于覆盖初始化恢复路径。"""
 
     def __init__(self) -> None:
         super().__init__()
@@ -82,7 +82,7 @@ class FailFirstUpdateRepository(InMemoryInvestigationRepository):
 
 
 class BlockingGraph:
-    """Graph double that exposes whether shutdown cancels an active stream."""
+    """用于观察关闭操作是否取消活动流的 Graph 测试替身。"""
 
     def __init__(self) -> None:
         self.started = asyncio.Event()

@@ -1,4 +1,4 @@
-"""Contract tests for in-memory and parameterized pgvector stores."""
+"""内存和参数化 pgvector 存储的契约测试。"""
 
 import json
 from collections.abc import Iterator, Mapping, Sequence

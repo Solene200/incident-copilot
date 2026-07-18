@@ -1,4 +1,4 @@
-"""Checkpoint and interrupt behavior of the Phase 5 investigation graph."""
+"""Phase 5 调查 Graph 的 Checkpoint 和中断行为测试。"""
 
 from datetime import UTC, datetime
 from typing import Any

@@ -1,4 +1,4 @@
-"""End-to-end Phase 6 evaluation over Fixture, RAG, Fake Model, and LangGraph."""
+"""基于 Fixture、RAG、Fake Model 和 LangGraph 的 Phase 6 端到端评估。"""
 
 import json
 import socket

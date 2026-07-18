@@ -1,4 +1,4 @@
-"""Default-off and explicit-enable tests for optional OpenTelemetry spans."""
+"""可选 OpenTelemetry Span 默认关闭和显式启用测试。"""
 
 from contextlib import AbstractContextManager
 from types import TracebackType

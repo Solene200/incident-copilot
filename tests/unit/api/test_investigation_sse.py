@@ -1,4 +1,4 @@
-"""SSE heartbeat and client disconnect behavior without wall-clock sleeps."""
+"""不依赖实际时间等待的 SSE 心跳和客户端断开行为测试。"""
 
 from collections.abc import AsyncGenerator
 from typing import cast
@@ -12,7 +12,7 @@ from incident_copilot.investigations.service import InvestigationService
 
 
 class EmptyEventRepository:
-    """Return no events immediately so heartbeat behavior is deterministic."""
+    """立即返回空事件,使心跳行为保持确定性。"""
 
     def __init__(self) -> None:
         self.wait_calls = 0
@@ -39,7 +39,7 @@ class EmptyEventRepository:
 
 
 class RunningService:
-    """Minimal service projection used only through an explicit test cast."""
+    """只通过显式测试类型转换使用的最小 Service 投影。"""
 
     def __init__(self) -> None:
         self.repository = EmptyEventRepository()

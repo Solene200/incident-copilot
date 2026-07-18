@@ -1,4 +1,4 @@
-"""End-to-end contract tests for all seven fixture-backed tools."""
+"""全部七个 Fixture 工具的端到端契约测试。"""
 
 from datetime import UTC, datetime, timedelta
 

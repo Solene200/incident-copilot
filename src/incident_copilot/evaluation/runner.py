@@ -70,7 +70,7 @@ class OfflineEvaluationRunner:
             for sample in dataset.samples:
                 try:
                     result = await self._run_sample(sample, retriever=retriever, run_id=run_id)
-                except Exception as exc:  # retained as data so aggregate remains traceable
+                except Exception as exc:  # 保留为数据,使聚合结果仍可追踪
                     result = EvaluationSampleResult(
                         sample_id=sample.sample_id,
                         status=SampleStatus.FAILED,

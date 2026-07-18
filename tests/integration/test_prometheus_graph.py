@@ -1,4 +1,4 @@
-"""Mixed-source graph contract with a controlled Prometheus HTTP boundary."""
+"""使用受控 Prometheus HTTP 边界的混合数据源 Graph 契约测试。"""
 
 from datetime import UTC, datetime
 
@@ -14,7 +14,7 @@ TEST_NOW = datetime.now(UTC)
 
 
 class PrometheusFixtureTransport:
-    """Return the wire format emitted by a real query_range endpoint."""
+    """返回真实 query_range 接口生成的线路格式。"""
 
     async def get(self, url: str, *, timeout_seconds: float) -> HttpResponse:
         del url, timeout_seconds

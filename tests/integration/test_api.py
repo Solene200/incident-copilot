@@ -1,4 +1,4 @@
-"""HTTP-level tests for liveness and unified error responses."""
+"""存活检查和统一错误响应的 HTTP 层测试。"""
 
 from fastapi import Query
 from fastapi.testclient import TestClient

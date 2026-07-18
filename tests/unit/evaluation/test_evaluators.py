@@ -1,4 +1,4 @@
-"""Hand-calculated boundaries for every pure Phase 6 evaluator."""
+"""每个纯 Phase 6 评估器的手工计算边界测试。"""
 
 from datetime import UTC, datetime
 

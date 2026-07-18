@@ -1,4 +1,4 @@
-"""Truth table for non-model investigation stopping policy."""
+"""非模型调查停止策略的真值表测试。"""
 
 import pytest
 

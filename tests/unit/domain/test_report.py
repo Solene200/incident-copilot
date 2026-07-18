@@ -1,4 +1,4 @@
-"""Tests for report consistency and measured investigation statistics."""
+"""报告一致性和实际测量调查统计测试。"""
 
 from datetime import UTC, datetime, timedelta
 from typing import Any

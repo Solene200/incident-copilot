@@ -1,4 +1,4 @@
-"""Tests for query rewrite, idempotent ingest, RRF, dedupe, and RAG provider."""
+"""查询改写、幂等摄取、RRF、去重和 RAG Provider 测试。"""
 
 import asyncio
 import time

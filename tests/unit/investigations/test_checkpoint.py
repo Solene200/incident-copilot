@@ -1,4 +1,4 @@
-"""Checkpointer composition tests that never connect to an external database."""
+"""绝不连接外部数据库的 Checkpointer 组合测试。"""
 
 import pytest
 from langgraph.checkpoint.memory import InMemorySaver

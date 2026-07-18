@@ -1,4 +1,4 @@
-"""Offline structured model contract tests."""
+"""离线结构化模型契约测试。"""
 
 from datetime import UTC, datetime
 

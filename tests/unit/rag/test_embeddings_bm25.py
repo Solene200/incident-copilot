@@ -1,4 +1,4 @@
-"""Tests for deterministic fake embeddings and lexical ranking."""
+"""确定性 Fake Embedding 和词法排名测试。"""
 
 import math
 from pathlib import Path

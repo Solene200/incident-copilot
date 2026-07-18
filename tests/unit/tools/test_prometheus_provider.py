@@ -1,4 +1,4 @@
-"""Contract and failure tests for the Prometheus metrics adapter."""
+"""Prometheus 指标 Adapter 的契约和失败测试。"""
 
 from datetime import UTC, datetime, timedelta
 from urllib.parse import parse_qs, urlsplit
@@ -21,7 +21,7 @@ from incident_copilot.tools.schemas import QueryContext, QueryMetricsInput
 
 
 class FakeTransport:
-    """Record adapter requests and return a controlled response or failure."""
+    """记录 Adapter 请求并返回受控响应或失败。"""
 
     def __init__(
         self,

@@ -1,4 +1,4 @@
-"""Tests for evidence, citations, and bounded references."""
+"""证据、引用和有界引用测试。"""
 
 from datetime import UTC, datetime
 

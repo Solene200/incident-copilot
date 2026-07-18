@@ -1,4 +1,4 @@
-"""Tests for incident context invariants."""
+"""事故上下文不变量测试。"""
 
 from datetime import UTC, datetime
 

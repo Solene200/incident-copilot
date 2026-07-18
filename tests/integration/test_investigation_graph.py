@@ -1,4 +1,4 @@
-"""End-to-end Phase 4 graph behavior over deterministic local providers."""
+"""基于确定性本地 Provider 的 Phase 4 Graph 端到端行为测试。"""
 
 import asyncio
 from datetime import UTC, datetime
@@ -170,7 +170,7 @@ async def test_estimated_token_budget_stops_additional_model_calls() -> None:
 
 
 class ExpensiveInvalidModel:
-    """Consume most of the budget while returning invalid structured output."""
+    """消耗大部分预算,同时返回无效结构化输出。"""
 
     async def complete(self, context: ModelContext) -> ModelResponse:
         del context
@@ -213,7 +213,7 @@ async def test_already_expired_deadline_skips_tools_and_external_model_calls() -
 
 
 class HangingModel:
-    """Prove the graph owns the model timeout and cancels an async provider task."""
+    """证明 Graph 控制模型超时并会取消异步 Provider 任务。"""
 
     def __init__(self) -> None:
         self.cancelled = asyncio.Event()
@@ -247,7 +247,7 @@ async def test_hanging_model_is_cancelled_at_deadline_and_degrades_to_report() -
 
 
 class InvalidStructuredModel:
-    """Return JSON that fails every task-specific Pydantic Schema."""
+    """返回无法通过任何任务专属 Pydantic Schema 的 JSON。"""
 
     async def complete(self, context: ModelContext) -> ModelResponse:
         del context
@@ -270,7 +270,7 @@ async def test_invalid_structured_model_output_retries_then_degrades() -> None:
 
 
 class FailingModel:
-    """Raise a provider failure rather than returning invalid structured data."""
+    """抛出 Provider 失败,而不是返回无效结构化数据。"""
 
     async def complete(self, context: ModelContext) -> ModelResponse:
         del context
@@ -293,7 +293,7 @@ async def test_model_provider_exception_retries_then_degrades_without_aborting_g
 
 
 class UntrustedPlanIdentityModel:
-    """Return valid JSON whose model-owned IDs and round cannot be trusted."""
+    """返回格式有效但模型提供的 ID 和轮次不可信的 JSON。"""
 
     def __init__(self) -> None:
         self._base = FakeModelProvider()
@@ -333,7 +333,7 @@ async def test_graph_recomputes_plan_identity_round_and_cross_query_deduplicatio
 
 
 class FailingChanges:
-    """One failing provider used to prove sibling branch degradation."""
+    """用于证明兄弟分支可以降级的失败 Provider。"""
 
     async def recent(
         self, query: GetRecentChangesInput, context: QueryContext
@@ -377,7 +377,7 @@ async def test_one_provider_failure_preserves_other_evidence_and_reports_gap() -
 
 
 class ParallelBarrierProvider:
-    """Delegate only after every initial Send branch has started."""
+    """仅在所有初始 Send 分支启动后才继续执行。"""
 
     def __init__(self) -> None:
         self._fixture = FixtureProvider.payment_service()

@@ -1,4 +1,4 @@
-"""Tests for deterministic transformations used by the real-source demo."""
+"""真实数据源演示所用确定性转换测试。"""
 
 import asyncio
 from datetime import UTC, datetime, timedelta

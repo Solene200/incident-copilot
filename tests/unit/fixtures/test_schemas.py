@@ -1,4 +1,4 @@
-"""Tests for versioned fixture files."""
+"""版本化 Fixture 文件测试。"""
 
 from pathlib import Path
 

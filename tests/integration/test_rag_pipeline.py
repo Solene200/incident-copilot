@@ -1,4 +1,4 @@
-"""Offline end-to-end tests from repository documents through Phase 2 tools."""
+"""从仓库文档到 Phase 2 工具的离线端到端测试。"""
 
 from datetime import UTC, datetime, timedelta
 

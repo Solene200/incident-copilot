@@ -1,4 +1,4 @@
-"""Guard the committed graph visualization against idealized documentation drift."""
+"""防止已提交 Graph 可视化与真实源码发生理想化漂移。"""
 
 from pathlib import Path
 

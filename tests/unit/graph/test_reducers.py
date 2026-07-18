@@ -1,4 +1,4 @@
-"""Reducer properties required for parallel LangGraph state updates."""
+"""并行 LangGraph State 更新所需的 Reducer 性质测试。"""
 
 from incident_copilot.domain.evidence import EvidenceRef
 from incident_copilot.graph.schemas import ModelUsage

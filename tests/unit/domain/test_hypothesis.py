@@ -1,4 +1,4 @@
-"""Tests for hypothesis evidence relationships."""
+"""假设与证据关系测试。"""
 
 from typing import Any
 
