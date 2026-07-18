@@ -109,6 +109,7 @@ class InvestigationState(TypedDict, total=False):
     tool_failure_count: Annotated[int, add_count]
     max_model_calls: int
     model_call_count: Annotated[int, add_count]
+    max_estimated_tokens: int
     model_usage: Annotated[ModelUsage, add_usage]
     started_at: datetime
     deadline_at: datetime

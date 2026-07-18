@@ -23,6 +23,11 @@ def decide_after_judge(state: InvestigationState) -> RouteDecision:
         return RouteDecision(RouteTarget.REPORT, StopReason.TOOL_BUDGET_EXHAUSTED)
     if state.get("model_call_count", 0) >= state["max_model_calls"]:
         return RouteDecision(RouteTarget.REPORT, StopReason.MODEL_BUDGET_EXHAUSTED)
+    usage = state.get("model_usage")
+    if usage is not None and (
+        usage.input_tokens + usage.output_tokens >= state["max_estimated_tokens"]
+    ):
+        return RouteDecision(RouteTarget.REPORT, StopReason.TOKEN_BUDGET_EXHAUSTED)
     if state.get("evidence_sufficient", False):
         return RouteDecision(RouteTarget.REPORT, StopReason.EVIDENCE_SUFFICIENT)
     if state["research_round"] >= state["max_research_rounds"]:

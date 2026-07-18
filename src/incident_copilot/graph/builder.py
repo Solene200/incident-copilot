@@ -50,6 +50,7 @@ def create_initial_state(
         tool_failure_count=0,
         max_model_calls=policy.max_model_calls,
         model_call_count=0,
+        max_estimated_tokens=policy.max_estimated_tokens,
         model_usage=ModelUsage(),
         started_at=started_at,
         deadline_at=started_at + timedelta(seconds=policy.timeout_seconds),

@@ -218,6 +218,7 @@ class InvestigationNodes:
         projected["evidence_sufficient"] = sufficient
         projected["deadline_exceeded"] = deadline_exceeded
         projected["model_call_count"] = state.get("model_call_count", 0) + call.call_count
+        projected["model_usage"] = add_usage(state.get("model_usage", ModelUsage()), call.usage)
         decision = decide_after_judge(projected)
         update: InvestigationState = {
             "evidence_sufficient": sufficient,
@@ -369,7 +370,11 @@ class InvestigationNodes:
         schema: type[OutputT],
     ) -> StructuredCall[OutputT]:
         remaining = max(0, state["max_model_calls"] - state.get("model_call_count", 0))
-        attempts = min(2, remaining)
+        prior_usage = state.get("model_usage", ModelUsage())
+        tokens_exhausted = (
+            prior_usage.input_tokens + prior_usage.output_tokens >= state["max_estimated_tokens"]
+        )
+        attempts = 0 if tokens_exhausted else min(2, remaining)
         errors: list[InvestigationError] = []
         usage = ModelUsage()
         for attempt in range(1, attempts + 1):
@@ -382,12 +387,17 @@ class InvestigationNodes:
             else:
                 return StructuredCall(value, attempt, usage, tuple(errors))
         if attempts == 0:
+            message = (
+                "estimated token budget exhausted"
+                if tokens_exhausted
+                else "model call budget exhausted"
+            )
             errors.append(
                 self._model_error(
                     context.task,
                     context.research_round,
                     1,
-                    RuntimeError("model call budget exhausted"),
+                    RuntimeError(message),
                     category=ErrorCategory.BUDGET,
                 )
             )

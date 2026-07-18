@@ -3,7 +3,7 @@
 import pytest
 
 from incident_copilot.graph.routing import decide_after_judge
-from incident_copilot.graph.schemas import RouteTarget, StopReason
+from incident_copilot.graph.schemas import ModelUsage, RouteTarget, StopReason
 from incident_copilot.graph.state import InvestigationState
 
 
@@ -15,6 +15,8 @@ def base_state() -> InvestigationState:
         max_tool_calls=10,
         model_call_count=2,
         max_model_calls=10,
+        model_usage=ModelUsage(input_tokens=10, output_tokens=10),
+        max_estimated_tokens=1_000,
         evidence_sufficient=False,
         deadline_exceeded=False,
     )
@@ -26,6 +28,10 @@ def base_state() -> InvestigationState:
         ({"deadline_exceeded": True}, StopReason.DEADLINE_EXCEEDED),
         ({"tool_call_count": 10}, StopReason.TOOL_BUDGET_EXHAUSTED),
         ({"model_call_count": 10}, StopReason.MODEL_BUDGET_EXHAUSTED),
+        (
+            {"model_usage": ModelUsage(input_tokens=600, output_tokens=400)},
+            StopReason.TOKEN_BUDGET_EXHAUSTED,
+        ),
         ({"evidence_sufficient": True}, StopReason.EVIDENCE_SUFFICIENT),
         ({"research_round": 2}, StopReason.MAX_RESEARCH_ROUNDS),
     ),

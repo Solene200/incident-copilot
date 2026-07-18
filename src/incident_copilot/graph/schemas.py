@@ -41,6 +41,7 @@ class StopReason(StrEnum):
     MAX_RESEARCH_ROUNDS = "max_research_rounds"
     TOOL_BUDGET_EXHAUSTED = "tool_budget_exhausted"
     MODEL_BUDGET_EXHAUSTED = "model_budget_exhausted"
+    TOKEN_BUDGET_EXHAUSTED = "token_budget_exhausted"
     DEADLINE_EXCEEDED = "deadline_exceeded"
 
 
@@ -51,6 +52,7 @@ class InvestigationOptions(DomainModel):
     max_tool_calls: int = Field(default=14, ge=1, le=100)
     max_parallel_tools: int = Field(default=7, ge=1, le=20)
     max_model_calls: int = Field(default=20, ge=1, le=50)
+    max_estimated_tokens: int = Field(default=20_000, ge=1, le=1_000_000)
     timeout_seconds: float = Field(default=30.0, gt=0, le=300)
 
 

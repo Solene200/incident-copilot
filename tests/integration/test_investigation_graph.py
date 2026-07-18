@@ -128,6 +128,22 @@ async def test_model_budget_stops_additional_provider_calls() -> None:
     assert state["final_report"].investigation_stats.model_call_count == 2
 
 
+@pytest.mark.asyncio
+async def test_estimated_token_budget_stops_additional_model_calls() -> None:
+    graph = build_offline_investigation_graph(clock=fixed_clock)
+    initial = create_initial_state(
+        fixture_incident(),
+        options=InvestigationOptions(max_estimated_tokens=1),
+        clock=fixed_clock,
+    )
+
+    state = await graph.ainvoke(initial)
+
+    assert state["model_call_count"] == 1
+    assert state["stop_reason"] is StopReason.TOKEN_BUDGET_EXHAUSTED
+    assert state["final_report"].investigation_stats.model_call_count == 1
+
+
 class InvalidStructuredModel:
     """Return JSON that fails every task-specific Pydantic Schema."""
 
