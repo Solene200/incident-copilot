@@ -210,11 +210,19 @@ class OfflineEvaluationRunner:
         return tuple(sorted(calls, key=lambda item: (item.tool_name, str(item.arguments))))
 
     def _tracing_context(self) -> AbstractContextManager[object]:
-        if not self._enable_langsmith:
+        try:
+            from langsmith import tracing_context
+        except ImportError:
+            if self._enable_langsmith:
+                raise RuntimeError(
+                    "LangSmith tracing was requested but the SDK is unavailable"
+                ) from None
             return nullcontext()
-        from langsmith import tracing_context
 
-        return tracing_context(enabled=True, project_name=self._project_name)
+        return tracing_context(
+            enabled=self._enable_langsmith,
+            project_name=self._project_name if self._enable_langsmith else None,
+        )
 
     @staticmethod
     def _render_markdown(summary: EvaluationSummary) -> str:
