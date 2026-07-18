@@ -4,8 +4,8 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 当前已完成阶段 | Phase 2 |
-| 下一阶段 | Phase 3（等待用户明确确认） |
+| 当前已完成阶段 | Phase 3 |
+| 下一阶段 | Phase 4（等待用户明确确认） |
 | 最近更新 | 2026-07-18 |
 | 仓库初始状态 | 空目录，无 `.git` 元数据 |
 | 当前运行环境 | Windows / PowerShell；Python 3.13 可用 |
@@ -86,6 +86,7 @@
 | 2026-07-18 | 0 | 从空目录建立需求、架构、Graph、数据模型、路线和仓库规范基线 |
 | 2026-07-18 | 环境准备 | 安装并验证 Git、uv、WSL 2、Docker Desktop/CLI/Compose；未开始 Phase 1 |
 | 2026-07-18 | 2 | 完成离线 Fixture Provider、七工具、Registry、基准 payment-service 数据与失败测试 |
+| 2026-07-18 | 3 | 完成离线知识 ingest、Fake Embedding、BM25/向量/RRF、pgvector Adapter 与检索脚本 |
 
 ## Phase 1 — 工程骨架和领域模型
 
@@ -238,3 +239,103 @@ uv run pytest
 2. 保持 Phase 2 的 Provider/Registry 契约与全部质量门禁通过。
 3. 只实现知识文档加载、切分、确定性 Fake Embedding、BM25/向量/RRF、过滤去重和 citation 保留。
 4. 不提前实现 LangGraph 调查流程、API 生命周期或真实模型调用。
+
+## Phase 3 — RAG Indexing 和 Retrieval
+
+### 状态
+
+`completed`
+
+### 开始前基线
+
+- 完整重读 `AGENTS.md`、PRD、架构、Graph、数据模型、路线图和进度文档。
+- `main` 与 `origin/main` 一致，工作区无 diff；基线提交为 `121148c feat: complete phase 2 provider tool layer`。
+- 基线 `uv lock --check`、Ruff format/check、`mypy src tests` 全部通过，全量测试 `66 passed`。
+
+### 完成内容
+
+- 定义 `KnowledgeDocument`、`KnowledgeChunk`、`EmbeddedChunk`、metadata filter、查询、候选、命中和 ingest/result Schema；时间、URI、服务、环境、hash 和引用均严格校验。
+- 使用标准库 `tomllib` 加载 UTF-8 Markdown frontmatter，限制文件位于配置根目录内，拒绝坏 TOML、缺失 metadata 和重复 document ID。
+- 实现按 Markdown 标题边界切分的 Splitter；只在超长小节内使用有界 overlap，每个 Chunk 继承文档 metadata 并生成可解析 citation。
+- 实现固定 64 维 signed-hash Fake Embedding，明确只用于确定性数据链路，不声明真实语义质量。
+- 实现 BM25、内存 cosine VectorStore、统一 metadata filter、稳定 tie-break、RRF 融合、content-hash 去重、top_k 和 citation 保留。
+- 实现透明规则 Query Rewrite，覆盖 `db/postgresql/timeout/pool/checkout` 和 payment-service 场景中的中文别名，不调用 LLM。
+- 实现 `RagKnowledgeProvider`，保持 Phase 2 `KnowledgeProvider` 与两个工具的调用契约。
+- 实现 `PgVectorStore`：安全表名、维度校验、显式 `ensure_schema()`、参数化 SQL、JSONB payload 和 pgvector cosine 查询；默认无驱动/数据库依赖。
+- 准备 2 个 Runbook、1 个服务说明和 1 个历史事故，共加载为 12 个 Chunk。
+- 提供 `scripts/ingest_knowledge.py` 和 `scripts/search_knowledge.py`；实际运行输出可审计 JSON，不写入伪造索引/评估文件。
+- 将 pytest `basetemp` 固定到仓库内已忽略的 `.pytest-tmp/`，避免 Windows 用户临时目录 ACL 导致 Loader 的真实临时文件测试无法运行；未跳过测试。
+- 测试默认仅使用本地 Markdown、Fake Embedding、内存索引或 recording SQL session，不调用网络、在线模型、在线 embedding 或付费 API。
+
+### 分步 Git 记录
+
+- `048e5e3`：知识 Schema、Loader、Splitter、metadata/hash/citation 和 4 个样例文档；相关 8 tests、全量 74 tests 通过后推送。
+- `bc4bb9d`：Fake Embedding、BM25、内存/pgvector、Query Rewrite、RRF Hybrid Retrieval、RAG Provider；相关 21 tests、全量 87 tests 通过后推送。
+- 最终脚本与阶段文档在完整门禁通过后单独提交推送。
+
+### 新增或修改文件
+
+- RAG：`src/incident_copilot/rag/`。
+- 知识数据：`data/knowledge/runbooks/`、`data/knowledge/services/`、`data/knowledge/incidents/`。
+- 脚本：`scripts/ingest_knowledge.py`、`scripts/search_knowledge.py`。
+- 测试：`tests/unit/rag/`、`tests/integration/test_rag_pipeline.py`。
+- 文档/入口：`README.md`、`data/README.md`、`Makefile`、`.gitignore`、`pyproject.toml`、`AGENTS.md`、`docs/ROADMAP.md`、`docs/PROGRESS.md`。
+
+### 依赖与运行影响
+
+- Phase 3 未新增第三方依赖，`uv.lock` 仍解析 37 个包。
+- Fake Embedding、BM25 与内存向量索引使用 Python 标准库，默认启动/测试不需要 API Key、数据库或网络。
+- pgvector Adapter 面向窄 `PgVectorSession` Protocol；真实部署可由 psycopg/SQLAlchemy 包装器注入，避免把数据库驱动变成离线必需依赖。
+
+### 实际检查结果
+
+| 命令/检查 | 真实结果 |
+| --- | --- |
+| `uv lock --check` | PASS：锁文件一致，37 packages |
+| `uv run ruff format --check .` | PASS：56 个 Python 文件已格式化 |
+| `uv run ruff check .` | PASS |
+| `uv run mypy src tests` | PASS：54 个 source files，0 issues |
+| `uv run pytest tests/unit/rag tests/integration/test_rag_pipeline.py` | PASS：21 passed |
+| `uv run pytest` | PASS：87 passed |
+| `uv run python scripts/ingest_knowledge.py` | PASS：4 documents、12 chunks、重复 ingest 计数一致 |
+| `uv run python scripts/search_knowledge.py --query "database connection pool timeout" --service payment-service --document-type runbook --top-k 2` | PASS：返回 2 条 Runbook Chunk，citation 可解析到源 Markdown |
+
+测试耗时只作为本机运行记录，不作为性能/P95 声明。
+
+### 固定检索回归结果
+
+3 条手写查询分别期望数据库连接池 Runbook、payment-service 服务文档和历史连接池事故。最终离线结果：
+
+- Recall@3：`1.0`（3/3 目标文档进入前三）；
+- MRR：`7/9 ≈ 0.7778`（目标文档排名分别为 3、1、1）。
+
+该结果只描述当前 4 文档、3 查询的确定性回归 fixture，不是模型准确率、生产检索质量或统计显著评估。完整 Evaluation 仍属于 Phase 6。
+
+### 已知问题
+
+- Fake Embedding 是 signed-hash 词袋，不能代表真实语义 embedding；中文能力来自有限规则 rewrite。
+- 默认索引在内存中，每个进程重新 ingest；未实现持久化快照、增量文件监控或并发写协调。
+- `PgVectorStore` 的参数化 SQL contract 已用 recording session 验证，但当前机器没有可用 PostgreSQL/pgvector，因此未运行真实数据库集成测试。
+- Splitter 使用确定性近似 token 计数，不等同于未来模型 tokenizer；reranker 尚未实现且在 Phase 3 为可选项。
+- Hybrid `score` 是归一化 RRF 排序分数，不是概率或诊断置信度。
+- 未实现 LangGraph、模型推理、调查预算/循环或最终报告；这些属于 Phase 4。
+
+### 手动验证
+
+```text
+uv sync
+uv run python scripts/ingest_knowledge.py
+uv run python scripts/search_knowledge.py --query "database connection pool timeout" --service payment-service --document-type runbook --top-k 2
+uv run pytest tests/unit/rag tests/integration/test_rag_pipeline.py
+```
+
+预期初始化脚本报告 4 documents、12 chunks 和 `repeated_ingest_same_counts=true`；检索脚本输出 rewritten query、RRF 匹配来源、section、原文及 `internal://knowledge/...` citation。
+
+### 下一阶段输入条件
+
+开始 Phase 4 前必须具备：
+
+1. 用户明确确认进入 Phase 4。
+2. 保持 Phase 2 工具和 Phase 3 RAG 契约及全部质量门禁通过。
+3. 先使用 Fixture Provider、RagKnowledgeProvider 和可复现 Fake Model 实现有界 LangGraph 调查循环。
+4. 不提前实现 Phase 5 的 HTTP 调查生命周期、SSE、checkpoint 后端或 HITL API。

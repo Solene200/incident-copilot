@@ -15,7 +15,7 @@
 | 0 | 需求、架构和规范 | completed | 可评审的产品/架构/Graph/数据模型蓝图 |
 | 1 | 工程骨架和领域模型 | completed | FastAPI `/health` + 领域模型测试 |
 | 2 | Fixture Provider 和工具层 | completed | 七类本地工具返回结构化证据 |
-| 3 | RAG Indexing 和 Retrieval | not_started | 可复现 Hybrid Search 与引用 |
+| 3 | RAG Indexing 和 Retrieval | completed | 可复现 Hybrid Search 与引用 |
 | 4 | LangGraph 调查工作流 | not_started | 完整有界调查循环与报告 |
 | 5 | API、Streaming、Checkpoint、HITL | not_started | 可创建、观察、恢复和审核调查 |
 | 6 | Evaluation 和 Agent 可观测性 | not_started | 可复现质量/成本/时延报告 |
@@ -158,6 +158,17 @@
 - 同一 fixture 多次 ingest/search 结果稳定。
 - 每个返回 Chunk 有可解析 Citation。
 - 无在线 Embedding API 时所有必需测试通过。
+
+### 实际验收
+
+- [x] 4 个 TOML-frontmatter Markdown 文档覆盖 Runbook、服务说明和历史事故；加载后形成 12 个标题感知 Chunk。
+- [x] 文档/Chunk 使用规范化 SHA-256 与稳定 ID；重复 ingest 后仍为 4 documents / 12 chunks，检索结果一致。
+- [x] Fake Embedding、BM25、内存 VectorStore、RRF Hybrid Search、content-hash 去重、metadata filter、top_k、citation 和规则 Query Rewrite 均有固定测试。
+- [x] `RagKnowledgeProvider` 在不修改 Phase 2 工具名/Schema 的情况下接入 `search_runbooks` 与 `search_similar_incidents`。
+- [x] `PgVectorStore` 提供显式 schema、参数化 upsert/delete/search 和维度/表名边界；recording session contract 测试通过。当前环境无 PostgreSQL/pgvector，未把真实数据库集成标为通过。
+- [x] 3 条手写 fixture 回归查询实际得到 Recall@3 `1.0`、MRR `7/9`；仅作为这 3 条固定样例的回归值，不代表泛化质量。
+- [x] 初始化与检索脚本真实运行成功，分别报告 4 documents / 12 chunks 和带原始 citation 的检索结果。
+- [x] `uv lock --check`、Ruff format/check、`mypy src tests`、21 项 Phase 3 测试与 87 项全量测试通过；默认路径未访问网络或在线模型/embedding。
 
 ## 7. Phase 4：LangGraph 调查工作流
 

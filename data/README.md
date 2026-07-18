@@ -4,6 +4,8 @@ Fixture 文件使用版本化 `IncidentFixture` envelope，并由 Phase 2 Fixtur
 
 - `incidents/example.json`：Phase 1 的最小 Schema 样例。
 - `incidents/payment-service-pool-exhaustion.json`：Phase 2 基准事件，包含日志、指标、Trace、变更、拓扑、Runbook 和历史事故证据。
+- `knowledge/runbooks/`：操作 Runbook；`knowledge/services/`：服务职责与依赖；`knowledge/incidents/`：脱敏历史故障。
+- 知识 Markdown 以 `+++` 包围 TOML frontmatter，显式记录文档 ID、类型、来源 URI、服务/环境、版本、effective/ingested 时间和非敏感 metadata。
 - 每条 Evidence 都包含来源类型/名称、时间点或时间窗口、服务与可解析 citation。
 - `ground_truth` 只供测试与 Evaluation 使用，FixtureProvider 不通过任何工具返回该字段。
 - Fixture 不得包含真实客户、凭据、Token、支付信息或个人信息。

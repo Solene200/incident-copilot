@@ -64,7 +64,7 @@ class MarkdownSplitter:
                 citation_id=f"cit_{stable_suffix}",
                 uri=document.source_uri,
                 locator=f"section={' > '.join(section_path)};chunk={ordinal}",
-                display_name=f"{document.title} — {' > '.join(section_path)}",
+                display_name=f"{document.title} - {' > '.join(section_path)}",
                 retrieved_at=document.ingested_at,
                 content_hash=content_hash,
             )
