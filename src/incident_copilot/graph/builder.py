@@ -1,7 +1,8 @@
 """LangGraph builder and Send-based dynamic evidence dispatch."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Hashable
 from datetime import datetime, timedelta
+from typing import Literal
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
@@ -59,7 +60,7 @@ def create_initial_state(
 
 def dispatch_evidence_collection(
     state: InvestigationState,
-) -> list[Send] | str:
+) -> list[Send] | Literal["aggregate_evidence"]:
     """Reserve budget before fan-out and send minimal per-step state in parallel."""
     remaining = max(0, state["max_tool_calls"] - state.get("tool_call_count", 0))
     limit = min(remaining, state["max_parallel_tools"])
@@ -109,12 +110,32 @@ def build_investigation_graph(
 
     builder.add_edge(START, "parse_incident")
     builder.add_edge("parse_incident", "build_investigation_plan")
-    builder.add_conditional_edges("build_investigation_plan", dispatch_evidence_collection)
+    dispatch_targets: dict[Hashable, str] = {
+        "collect_evidence": "collect_evidence",
+        "aggregate_evidence": "aggregate_evidence",
+    }
+    builder.add_conditional_edges(
+        "build_investigation_plan",
+        dispatch_evidence_collection,
+        path_map=dispatch_targets,
+    )
     builder.add_edge("collect_evidence", "aggregate_evidence")
     builder.add_edge("aggregate_evidence", "generate_hypotheses")
     builder.add_edge("generate_hypotheses", "verify_hypotheses")
     builder.add_edge("verify_hypotheses", "judge_evidence")
-    builder.add_conditional_edges("judge_evidence", route_after_judge)
-    builder.add_conditional_edges("refine_investigation", dispatch_evidence_collection)
+    route_targets: dict[Hashable, str] = {
+        "refine_investigation": "refine_investigation",
+        "generate_report": "generate_report",
+    }
+    builder.add_conditional_edges(
+        "judge_evidence",
+        route_after_judge,
+        path_map=route_targets,
+    )
+    builder.add_conditional_edges(
+        "refine_investigation",
+        dispatch_evidence_collection,
+        path_map=dispatch_targets,
+    )
     builder.add_edge("generate_report", END)
     return builder.compile(name="incident-copilot-phase-4")

@@ -1,6 +1,7 @@
 """Pure, exhaustively tested investigation loop routing policy."""
 
 from dataclasses import dataclass
+from typing import Literal
 
 from incident_copilot.graph.schemas import RouteTarget, StopReason
 from incident_copilot.graph.state import InvestigationState
@@ -29,6 +30,10 @@ def decide_after_judge(state: InvestigationState) -> RouteDecision:
     return RouteDecision(RouteTarget.REFINE, None)
 
 
-def route_after_judge(state: InvestigationState) -> str:
+def route_after_judge(
+    state: InvestigationState,
+) -> Literal["refine_investigation", "generate_report"]:
     """Return only a predeclared graph node name."""
-    return decide_after_judge(state).target.value
+    if decide_after_judge(state).target is RouteTarget.REFINE:
+        return "refine_investigation"
+    return "generate_report"
