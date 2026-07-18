@@ -1,4 +1,4 @@
-.PHONY: sync format format-check lint typecheck test run rag-ingest rag-search graph-demo graph-mermaid
+.PHONY: sync format format-check lint typecheck test run rag-ingest rag-search graph-demo graph-mermaid demo-observability demo-down
 
 sync:
 	uv sync
@@ -17,6 +17,12 @@ typecheck:
 
 test:
 	uv run pytest
+
+demo-observability:
+	docker compose --profile demo up --build --abort-on-container-exit --exit-code-from demo demo
+
+demo-down:
+	docker compose --profile demo down -v --remove-orphans
 
 run:
 	uv run uvicorn incident_copilot.main:app --reload

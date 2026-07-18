@@ -1,0 +1,111 @@
+name: incident-copilot
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.5-pg18-trixie
+    environment:
+      POSTGRES_DB: incident_copilot
+      POSTGRES_USER: incident_copilot
+      POSTGRES_PASSWORD: incident_copilot_local
+    ports:
+      - "127.0.0.1:${INCIDENT_COPILOT_POSTGRES_PORT:-55432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U incident_copilot -d incident_copilot"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.156.0
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./deploy/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - "127.0.0.1:14317:4317"
+      - "127.0.0.1:14318:4318"
+
+  prometheus:
+    image: prom/prometheus:v3.12.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=2h
+    volumes:
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    depends_on:
+      otel-collector:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9090/-/healthy"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  telemetry-emitter:
+    build: .
+    command: ["uv", "run", "--no-sync", "python", "scripts/emit_demo_metrics.py"]
+    environment:
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: http://otel-collector:4318/v1/metrics
+    depends_on:
+      otel-collector:
+        condition: service_started
+    restart: unless-stopped
+
+  api:
+    build: .
+    environment:
+      INCIDENT_COPILOT_CHECKPOINT_BACKEND: postgres
+      INCIDENT_COPILOT_POSTGRES_DSN: postgresql://incident_copilot:incident_copilot_local@postgres:5432/incident_copilot
+      INCIDENT_COPILOT_METRICS_BACKEND: prometheus
+      INCIDENT_COPILOT_PROMETHEUS_BASE_URL: http://prometheus:9090
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      prometheus:
+        condition: service_healthy
+      telemetry-emitter:
+        condition: service_started
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "uv",
+          "run",
+          "--no-sync",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  demo:
+    build: .
+    profiles: ["demo"]
+    command:
+      [
+        "uv",
+        "run",
+        "--no-sync",
+        "python",
+        "scripts/run_observability_demo.py",
+        "--prometheus-url",
+        "http://prometheus:9090",
+      ]
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      telemetry-emitter:
+        condition: service_started
+
+volumes:
+  postgres-data:
+  prometheus-data:

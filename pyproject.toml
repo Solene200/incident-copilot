@@ -19,6 +19,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+demo = [
+    "opentelemetry-api>=1.43,<2",
+    "opentelemetry-exporter-otlp-proto-http>=1.43,<2",
+    "opentelemetry-sdk>=1.43,<2",
+]
 observability = [
     "opentelemetry-api>=1.43,<2",
     "opentelemetry-sdk>=1.43,<2",

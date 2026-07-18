@@ -3,6 +3,7 @@
 import argparse
 import json
 import time
+from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 from urllib.request import Request, urlopen
 from uuid import uuid4
@@ -38,19 +39,30 @@ def wait_for_status(base_url: str, investigation_id: str, expected: str) -> dict
 
 
 def main() -> None:
-    """Create, observe, approve, and print one fixture-backed report summary."""
+    """Create, observe, approve, and print one report summary."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", default="http://127.0.0.1:8000")
+    parser.add_argument(
+        "--live-window",
+        action="store_true",
+        help="Use the current 20-minute window for the Prometheus-backed Compose demo.",
+    )
     arguments = parser.parse_args()
     base_url = arguments.base_url.rstrip("/")
+    if arguments.live_window:
+        end_time = datetime.now(UTC)
+        start_time = end_time - timedelta(minutes=20)
+    else:
+        start_time = datetime.fromisoformat("2026-07-18T10:20:00+08:00")
+        end_time = datetime.fromisoformat("2026-07-18T10:40:00+08:00")
     created = request_json(
         "POST",
         f"{base_url}/api/v1/investigations",
         {
             "query": "payment-service error rate increased and requests timed out",
             "services": ["payment-service"],
-            "start_time": "2026-07-18T10:20:00+08:00",
-            "end_time": "2026-07-18T10:40:00+08:00",
+            "start_time": start_time.isoformat(),
+            "end_time": end_time.isoformat(),
             "symptoms": ["elevated error rate", "request timeouts"],
             "severity": "sev2",
             "environment": "production",
@@ -69,6 +81,7 @@ def main() -> None:
     )
     completed = wait_for_status(base_url, investigation_id, "completed")
     report = cast(dict[str, Any], completed["report"])
+    citations = cast(list[dict[str, Any]], report["citations"])
     print(
         json.dumps(
             {
@@ -82,6 +95,10 @@ def main() -> None:
                 "report_id": report["report_id"],
                 "disposition": report["disposition"],
                 "supporting_evidence_count": len(report["supporting_evidence"]),
+                "prometheus_citation_count": sum(
+                    str(item.get("uri", "")).startswith("http://prometheus:9090/")
+                    for item in citations
+                ),
             },
             ensure_ascii=False,
             indent=2,
