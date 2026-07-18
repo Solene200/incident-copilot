@@ -22,7 +22,7 @@
 14. [常见问题和面试问答](13-faq-and-interview.md)
 15. [术语表](14-glossary.md)
 
-需要直接读代码时, 使用[核心源码阅读索引](core-reading-index.md)和[逐文件源码解读](code-walkthrough/README.md)。
+需要直接读代码时, 使用[核心源码阅读索引](core-reading-index.md)进入逐文件源码解读。
 
 ## 阅读约定
 
