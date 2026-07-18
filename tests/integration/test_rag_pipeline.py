@@ -61,7 +61,7 @@ async def test_hybrid_rag_integrates_with_both_knowledge_tools() -> None:
         make_context(),
     )
 
-    assert ingest.indexed_document_count == 4
+    assert ingest.indexed_document_count == 6
     assert ingest.indexed_chunk_count > ingest.indexed_document_count
     assert runbooks.evidence[0].metadata["document_id"] == "doc_runbook_payment_db_pool"
     assert incidents.evidence[0].metadata["document_id"] == "doc_incident_payment_pool_20260628"

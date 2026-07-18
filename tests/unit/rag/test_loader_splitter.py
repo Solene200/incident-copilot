@@ -66,7 +66,7 @@ Inspect database connection pool saturation.
 def test_repository_corpus_loads_with_normalized_metadata_and_real_hashes() -> None:
     documents = MarkdownDocumentLoader(repository_knowledge_root()).load()
 
-    assert len(documents) == 4
+    assert len(documents) == 6
     assert {document.document_type for document in documents} == {
         DocumentType.RUNBOOK,
         DocumentType.SERVICE,

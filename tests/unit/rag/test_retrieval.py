@@ -99,7 +99,7 @@ def test_ingest_and_hybrid_search_are_idempotent_and_citation_preserving() -> No
         )
     )
 
-    assert initial.indexed_document_count == repeated_ingest.indexed_document_count == 4
+    assert initial.indexed_document_count == repeated_ingest.indexed_document_count == 6
     assert initial.indexed_chunk_count == repeated_ingest.indexed_chunk_count
     assert first == second
     assert first.hits[0].chunk.document_id == "doc_runbook_payment_db_pool"
