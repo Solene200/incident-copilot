@@ -1,4 +1,4 @@
-"""Versioned fixture envelopes without provider implementation."""
+"""不包含 Provider 实现的版本化 Fixture 外层结构。"""
 
 from typing import Literal, Self
 
@@ -15,7 +15,7 @@ from incident_copilot.domain.incident import IncidentContext
 
 
 class FixtureGroundTruth(DomainModel):
-    """Evaluation-only truth kept separate from future agent-visible payloads."""
+    """仅供 Evaluation 使用、与 Agent 可见载荷隔离的真实标签。"""
 
     root_cause: str = Field(min_length=1, max_length=4_000)
     affected_services: tuple[str, ...] = Field(default_factory=tuple, max_length=20)
@@ -33,7 +33,7 @@ class FixtureGroundTruth(DomainModel):
 
 
 class IncidentFixture(DomainModel):
-    """Minimal versioned fixture file for one deterministic incident scenario."""
+    """描述一个确定性事故场景的最小版本化 Fixture 文件。"""
 
     schema_version: Literal["1.0"] = "1.0"
     name: str = Field(min_length=1, max_length=128)

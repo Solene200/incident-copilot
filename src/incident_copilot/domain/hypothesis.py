@@ -1,4 +1,4 @@
-"""Root-cause hypothesis domain models."""
+"""根因假设领域模型。"""
 
 from typing import Self
 
@@ -14,7 +14,7 @@ from incident_copilot.domain.common import (
 
 
 class VerificationQuery(DomainModel):
-    """Provider-neutral query intent used to test a hypothesis later."""
+    """供后续验证假设使用的 Provider 无关查询意图。"""
 
     query: str = Field(min_length=1, max_length=1_000)
     source_types: tuple[SourceType, ...] = Field(min_length=1, max_length=6)
@@ -35,7 +35,7 @@ class VerificationQuery(DomainModel):
 
 
 class Hypothesis(DomainModel):
-    """A falsifiable root-cause claim linked to supporting and opposing evidence."""
+    """关联支持与反对证据、可以被证伪的根因陈述。"""
 
     hypothesis_id: str = Field(pattern=r"^hyp_[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
     description: str = Field(min_length=1, max_length=2_000)

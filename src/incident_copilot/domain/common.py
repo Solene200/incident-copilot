@@ -1,4 +1,4 @@
-"""Shared domain types and validation helpers."""
+"""共享领域类型和校验辅助函数。"""
 
 import re
 from collections.abc import Sequence
@@ -10,7 +10,7 @@ from pydantic import AfterValidator, BaseModel, ConfigDict
 
 
 def require_timezone(value: datetime) -> datetime:
-    """Reject naive datetimes at every domain boundary."""
+    """在所有领域边界拒绝不带时区的时间。"""
     if value.tzinfo is None or value.utcoffset() is None:
         raise ValueError("datetime must include timezone information")
     return value
@@ -20,7 +20,7 @@ AwareDatetime = Annotated[datetime, AfterValidator(require_timezone)]
 
 
 class DomainModel(BaseModel):
-    """Strict base class for validated domain values."""
+    """经过校验的领域值使用的严格基类。"""
 
     model_config = ConfigDict(
         extra="forbid",
@@ -30,7 +30,7 @@ class DomainModel(BaseModel):
 
 
 class Severity(StrEnum):
-    """Incident severity independent of a specific observability vendor."""
+    """不依赖具体可观测性厂商的事故严重程度。"""
 
     UNKNOWN = "unknown"
     SEV1 = "sev1"
@@ -40,7 +40,7 @@ class Severity(StrEnum):
 
 
 class Environment(StrEnum):
-    """Deployment environment reported by an incident."""
+    """事故信息所报告的部署环境。"""
 
     PRODUCTION = "production"
     STAGING = "staging"
@@ -49,7 +49,7 @@ class Environment(StrEnum):
 
 
 class SourceType(StrEnum):
-    """Canonical evidence source categories."""
+    """规范化的证据来源类别。"""
 
     LOG = "log"
     METRIC = "metric"
@@ -60,7 +60,7 @@ class SourceType(StrEnum):
 
 
 class HypothesisStatus(StrEnum):
-    """Lifecycle states for a root-cause hypothesis."""
+    """根因假设的生命周期状态。"""
 
     PROPOSED = "proposed"
     INVESTIGATING = "investigating"
@@ -70,7 +70,7 @@ class HypothesisStatus(StrEnum):
 
 
 class ReportDisposition(StrEnum):
-    """How strongly a report states its root cause."""
+    """报告陈述根因时采用的确定程度。"""
 
     CONFIRMED = "confirmed"
     PROBABLE = "probable"
@@ -78,7 +78,7 @@ class ReportDisposition(StrEnum):
 
 
 class RiskLevel(StrEnum):
-    """Operational risk attached to a remediation suggestion."""
+    """修复建议附带的操作风险等级。"""
 
     LOW = "low"
     MEDIUM = "medium"
@@ -87,7 +87,7 @@ class RiskLevel(StrEnum):
 
 
 def normalize_services(values: Sequence[str]) -> tuple[str, ...]:
-    """Normalize, validate, and de-duplicate service names in input order."""
+    """按输入顺序规范化、校验并去重服务名称。"""
     normalized: list[str] = []
     seen: set[str] = set()
     for raw_value in values:
@@ -105,14 +105,14 @@ def normalize_services(values: Sequence[str]) -> tuple[str, ...]:
 
 
 def normalize_optional_service(value: str | None) -> str | None:
-    """Normalize one optional service name with the shared service-name contract."""
+    """使用共享服务名契约规范化一个可选服务名称。"""
     if value is None:
         return None
     return normalize_services((value,))[0]
 
 
 def unique_non_empty(values: Sequence[str], *, field_name: str) -> tuple[str, ...]:
-    """Strip and de-duplicate bounded string collections."""
+    """清理并去重有界字符串集合。"""
     result: list[str] = []
     seen: set[str] = set()
     for raw_value in values:
@@ -126,7 +126,7 @@ def unique_non_empty(values: Sequence[str], *, field_name: str) -> tuple[str, ..
 
 
 def unique_evidence_ids(values: Sequence[str], *, field_name: str) -> tuple[str, ...]:
-    """Validate and de-duplicate references to evidence domain objects."""
+    """校验并去重对证据领域对象的引用。"""
     result = unique_non_empty(values, field_name=field_name)
     for value in result:
         if re.fullmatch(r"ev_[A-Za-z0-9][A-Za-z0-9_-]{0,127}", value) is None:

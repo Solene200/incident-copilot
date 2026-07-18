@@ -1,4 +1,4 @@
-"""Framework-independent incident diagnosis domain models."""
+"""不依赖框架的事故诊断领域模型。"""
 
 from incident_copilot.domain.common import (
     Environment,

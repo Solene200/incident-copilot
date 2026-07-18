@@ -1,4 +1,4 @@
-"""Evidence and citation domain models."""
+"""证据和引用领域模型。"""
 
 from datetime import UTC, datetime
 from typing import Self
@@ -15,7 +15,7 @@ from incident_copilot.domain.common import (
 
 
 class Citation(DomainModel):
-    """Stable locator that can resolve a report statement back to its source."""
+    """能够把报告陈述解析回原始来源的稳定定位信息。"""
 
     citation_id: str = Field(pattern=r"^cit_[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
     uri: str = Field(min_length=1, max_length=2_048)
@@ -40,7 +40,7 @@ class Citation(DomainModel):
 
 
 class Evidence(DomainModel):
-    """Full evidence retained outside the future bounded graph state."""
+    """保存在有界 Graph State 之外的完整证据。"""
 
     evidence_id: str = Field(pattern=r"^ev_[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
     source_type: SourceType
@@ -80,7 +80,7 @@ class Evidence(DomainModel):
 
 
 class EvidenceRef(DomainModel):
-    """Bounded projection suitable for graph state and report responses."""
+    """适合 Graph State 和报告响应使用的有界投影。"""
 
     evidence_id: str = Field(pattern=r"^ev_[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
     source_type: SourceType
@@ -113,7 +113,7 @@ class EvidenceRef(DomainModel):
 
     @classmethod
     def from_evidence(cls, evidence: Evidence) -> Self:
-        """Create the deliberately small state/report projection."""
+        """创建经过刻意裁剪的 State 和报告投影。"""
         return cls(
             evidence_id=evidence.evidence_id,
             source_type=evidence.source_type,

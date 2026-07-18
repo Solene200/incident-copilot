@@ -1,4 +1,4 @@
-"""Incident context domain model."""
+"""事故上下文领域模型。"""
 
 from datetime import UTC, datetime
 from typing import Self
@@ -16,7 +16,7 @@ from incident_copilot.domain.common import (
 
 
 class IncidentContext(DomainModel):
-    """Normalized scope extracted from a user's incident description."""
+    """从用户事故描述中提取并规范化的调查范围。"""
 
     incident_id: str = Field(pattern=r"^inc_[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
     raw_query: str = Field(min_length=1, max_length=10_000)

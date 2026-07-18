@@ -1,4 +1,4 @@
-"""Structured incident report domain models."""
+"""结构化事故报告领域模型。"""
 
 from collections.abc import Mapping
 from datetime import UTC, datetime
@@ -21,7 +21,7 @@ from incident_copilot.domain.evidence import Citation, EvidenceRef
 
 
 class TimelineEvent(DomainModel):
-    """One timestamped fact in the incident timeline."""
+    """事故时间线中带有时间戳的一项事实。"""
 
     timestamp: AwareDatetime
     description: str = Field(min_length=1, max_length=1_000)
@@ -34,7 +34,7 @@ class TimelineEvent(DomainModel):
 
 
 class RejectedHypothesis(DomainModel):
-    """Compact explanation of a hypothesis that evidence ruled out."""
+    """对已被证据排除的假设进行简要说明。"""
 
     hypothesis_id: str = Field(pattern=r"^hyp_[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
     description: str = Field(min_length=1, max_length=2_000)
@@ -48,7 +48,7 @@ class RejectedHypothesis(DomainModel):
 
 
 class RemediationStep(DomainModel):
-    """Human-reviewed remediation recommendation; never an executable action."""
+    """需要人工审核的修复建议,本身绝不是可执行操作。"""
 
     action: str = Field(min_length=1, max_length=2_000)
     priority: int = Field(ge=1, le=100)
@@ -59,7 +59,7 @@ class RemediationStep(DomainModel):
 
 
 class InvestigationStats(DomainModel):
-    """Measured investigation usage; values are never inferred as evaluation quality."""
+    """实际测量的调查用量,这些数值绝不推断为评估质量。"""
 
     research_rounds: int = Field(ge=0)
     tool_call_count: int = Field(ge=0)
@@ -103,7 +103,7 @@ class InvestigationStats(DomainModel):
 
 
 class IncidentReport(DomainModel):
-    """Auditable root-cause report containing bounded evidence references."""
+    """包含有界证据引用且可审计的根因报告。"""
 
     schema_version: Literal["1.0"] = "1.0"
     report_id: str = Field(pattern=r"^rpt_[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
