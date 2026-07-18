@@ -11,6 +11,33 @@ ROOT = Path(__file__).resolve().parents[1]
 LEARNING_DIR = ROOT / "docs" / "learning"
 OUTPUT_PATH = LEARNING_DIR / "INCIDENT_COPILOT_LEARNING_GUIDE.md"
 
+CHAPTER_ICONS = {
+    "learning-home": "🏠",
+    "chapter-00": "🧭",
+    "chapter-01": "🚨",
+    "chapter-02": "🗂️",
+    "chapter-03": "🔄",
+    "chapter-04": "🧠",
+    "chapter-05": "🕸️",
+    "chapter-06": "🔌",
+    "chapter-07": "🔎",
+    "chapter-08": "🧪",
+    "chapter-09": "⚡",
+    "chapter-10": "⏸️",
+    "chapter-11": "📊",
+    "chapter-12": "🚀",
+    "chapter-13": "💬",
+    "chapter-14": "📖",
+    "core-reading-index": "🧩",
+}
+
+TOC_GROUPS = (
+    ("🧭 导学与项目主线", {"learning-home", *(f"chapter-{index:02d}" for index in range(4))}),
+    ("🧠 核心调查机制", {f"chapter-{index:02d}" for index in range(4, 9)}),
+    ("⚙️ 服务化、评估与实践", {f"chapter-{index:02d}" for index in range(9, 15)}),
+    ("🧩 核心源码精读", {"core-reading-index"}),
+)
+
 
 @dataclass(frozen=True, slots=True)
 class Chapter:
@@ -68,19 +95,44 @@ def _rewrite_links(markdown: str, source: Path, anchors: dict[Path, str]) -> str
     return MARKDOWN_LINK.sub(replace, markdown)
 
 
-def _shift_headings(markdown: str) -> str:
-    """把分章标题整体下移一级,同时跳过代码围栏中的内容。"""
+def _shift_headings(markdown: str, *, icon: str) -> str:
+    """把分章标题整体下移一级, 并为章节主标题添加视觉标识。"""
     shifted: list[str] = []
     in_fence = False
+    decorated_title = False
     for line in markdown.splitlines():
         if line.lstrip().startswith(("```", "~~~")):
             in_fence = not in_fence
             shifted.append(line)
             continue
+        if not in_fence and not decorated_title and line.startswith("# "):
+            line = f"# {icon} {line.removeprefix('# ')}"
+            decorated_title = True
         if not in_fence and re.match(r"^#{1,5} ", line):
             line = f"#{line}"
+        if not in_fence and line.startswith("下一步: "):
+            line = f"> **➡️ 下一步:** {line.removeprefix('下一步: ')}"
+        if not in_fence and line.startswith("完成标志: "):
+            line = f"> **✅ 完成标志:** {line.removeprefix('完成标志: ')}"
         shifted.append(line)
     return "\n".join(shifted).strip()
+
+
+def _toc_group(anchor: str) -> str:
+    """返回章节所属的目录分组, 源码精读文件统一归入最后一组。"""
+    if anchor.startswith("walkthrough-"):
+        return "🧩 核心源码精读"
+    for title, anchors in TOC_GROUPS:
+        if anchor in anchors:
+            return title
+    raise ValueError(f"learning chapter has no table-of-contents group: {anchor}")
+
+
+def _chapter_icon(anchor: str) -> str:
+    """为章节返回稳定图标, 源码精读使用统一的代码图标。"""
+    if anchor.startswith("walkthrough-"):
+        return "👨‍💻"
+    return CHAPTER_ICONS[anchor]
 
 
 def build_learning_guide() -> str:
@@ -90,27 +142,56 @@ def build_learning_guide() -> str:
     titles = [_title(markdown) for markdown in source_documents]
 
     lines = [
-        "# IncidentCopilot 中文教学版",
+        '<a id="top"></a>',
         "",
-        "> 本文档由分章教学文件自动合并生成。需要维护内容时请修改分章文件,然后运行",
+        '<div align="center">',
+        "",
+        "# 🚨 IncidentCopilot 中文教学版",
+        "",
+        "<p><strong>从一次故障告警, 到一份可恢复、可审计、带引用的智能诊断报告</strong></p>",
+        "",
+        '<p><span style="color:#2563EB"><strong>LangGraph 工作流</strong></span> · '
+        '<span style="color:#059669"><strong>多源可观测性</strong></span> · '
+        '<span style="color:#7C3AED"><strong>混合 RAG</strong></span> · '
+        '<span style="color:#DC2626"><strong>人工审核</strong></span></p>',
+        "",
+        "<p><strong>适合:</strong> AI 应用开发岗位面试 · 作品集展示 · LangGraph 工程化学习</p>",
+        "",
+        "</div>",
+        "",
+        "> [!TIP]",
+        "> 第一次阅读建议从 **🧭 学习路线** 开始; 准备面试时可直接进入 **🧩 核心源码精读**。",
+        "",
+        "> [!NOTE]",
+        "> 本文档由分章教学文件自动合并生成。需要维护内容时请修改分章文件, 然后运行",
         "> `uv run python scripts/build_learning_guide.py` 重新生成。",
         "",
-        "## 目录",
+        "## 📚 目录",
         "",
     ]
+    current_group = ""
     for chapter, title in zip(CHAPTERS, titles, strict=True):
-        lines.append(f"- [{title}](#{chapter.anchor})")
+        group = _toc_group(chapter.anchor)
+        if group != current_group:
+            lines.extend(("", f"### {group}", ""))
+            current_group = group
+        lines.append(f"- {_chapter_icon(chapter.anchor)} [{title}](#{chapter.anchor})")
 
-    for chapter, markdown in zip(CHAPTERS, source_documents, strict=True):
+    for index, (chapter, markdown) in enumerate(zip(CHAPTERS, source_documents, strict=True)):
         rewritten = _rewrite_links(markdown, chapter.path, anchors)
+        icon = _chapter_icon(chapter.anchor)
+        return_to_top = (
+            () if index == 0 else ('<div align="right"><a href="#top">⬆️ 返回顶部</a></div>', "")
+        )
         lines.extend(
             (
                 "",
+                *return_to_top,
                 "---",
                 "",
                 f'<a id="{chapter.anchor}"></a>',
                 "",
-                _shift_headings(rewritten),
+                _shift_headings(rewritten, icon=icon),
             )
         )
     return "\n".join(lines).rstrip() + "\n"
