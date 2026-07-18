@@ -1,4 +1,4 @@
-"""Bounded Prometheus HTTP API adapter for metric evidence."""
+"""用于指标证据的有界 Prometheus HTTP API Adapter。"""
 
 import asyncio
 import hashlib
@@ -33,26 +33,26 @@ MAX_POINTS_PER_SERIES = 240
 
 @dataclass(frozen=True, slots=True)
 class HttpResponse:
-    """Small transport response that keeps the adapter independent of an HTTP SDK."""
+    """让 Adapter 不依赖 HTTP SDK 的小型传输响应。"""
 
     status_code: int
     body: bytes
 
 
 class PrometheusTransport(Protocol):
-    """Injectable HTTP boundary used by the real adapter and offline tests."""
+    """真实 Adapter 和离线测试使用的可注入 HTTP 边界。"""
 
     async def get(self, url: str, *, timeout_seconds: float) -> HttpResponse:
-        """Fetch one already validated Prometheus API URL."""
+        """获取一个已经校验的 Prometheus API URL。"""
         ...
 
 
 class ResponseTooLargeError(Exception):
-    """Raised internally when a remote body exceeds the configured evidence bound."""
+    """远端响应体超过配置的证据上限时在内部抛出。"""
 
 
 class UrllibPrometheusTransport:
-    """Standard-library HTTP transport with a strict response-size limit."""
+    """具有严格响应大小限制的标准库 HTTP 传输实现。"""
 
     def __init__(self, *, max_response_bytes: int = MAX_RESPONSE_BYTES) -> None:
         if max_response_bytes < 1:
@@ -60,7 +60,7 @@ class UrllibPrometheusTransport:
         self._max_response_bytes = max_response_bytes
 
     async def get(self, url: str, *, timeout_seconds: float) -> HttpResponse:
-        """Run blocking urllib I/O outside the event loop."""
+        """在事件循环之外执行阻塞 urllib I/O。"""
         return await asyncio.to_thread(self._get_sync, url, timeout_seconds)
 
     def _get_sync(self, url: str, timeout_seconds: float) -> HttpResponse:
@@ -125,7 +125,7 @@ METRIC_MAPPINGS: Mapping[str, _MetricMapping] = {
 
 
 class PrometheusMetricsProvider:
-    """Translate allow-listed domain metrics into citable Prometheus evidence."""
+    """把白名单领域指标转换为可引用的 Prometheus 证据。"""
 
     def __init__(
         self,
@@ -141,7 +141,7 @@ class PrometheusMetricsProvider:
         self._transport = transport or UrllibPrometheusTransport()
 
     async def query(self, query: QueryMetricsInput, context: QueryContext) -> tuple[Evidence, ...]:
-        """Execute one safe range query and preserve its source locator."""
+        """执行一次安全范围查询并保留来源定位信息。"""
         mapping = METRIC_MAPPINGS.get(query.metric_name)
         if mapping is None or query.aggregation not in mapping.supported_aggregations:
             raise ProviderInvalidQueryError(

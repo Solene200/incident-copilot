@@ -1,4 +1,4 @@
-"""Strict inputs and outputs for read-only investigation tools."""
+"""只读调查工具使用的严格输入输出。"""
 
 from datetime import timedelta
 from typing import Self
@@ -16,7 +16,7 @@ MAX_QUERY_WINDOW = timedelta(hours=24)
 
 
 class QueryContext(DomainModel):
-    """Per-call controls supplied by orchestration without leaking graph state."""
+    """由编排层提供且不会泄漏 Graph State 的单次调用控制参数。"""
 
     correlation_id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
     deadline: AwareDatetime
@@ -24,7 +24,7 @@ class QueryContext(DomainModel):
 
 
 class ToolInput(DomainModel):
-    """Base input enforcing the shared normalized service contract."""
+    """强制执行共享规范化服务契约的输入基类。"""
 
     service: str = Field(min_length=1, max_length=128)
 
@@ -38,7 +38,7 @@ class ToolInput(DomainModel):
 
 
 class TimeRangeToolInput(ToolInput):
-    """Shared bounded time range and result limit."""
+    """共享的有界时间范围和结果数量限制。"""
 
     start_time: AwareDatetime
     end_time: AwareDatetime
@@ -54,27 +54,27 @@ class TimeRangeToolInput(ToolInput):
 
 
 class SearchLogsInput(TimeRangeToolInput):
-    """Validated log search intent independent of vendor query syntax."""
+    """不依赖厂商查询语法的已校验日志搜索意图。"""
 
     query: str | None = Field(default=None, min_length=1, max_length=256)
 
 
 class QueryMetricsInput(TimeRangeToolInput):
-    """Validated request for a pre-aggregated metric series."""
+    """针对预聚合指标序列的已校验请求。"""
 
     metric_name: str = Field(pattern=r"^[a-z][a-z0-9_.:-]{0,127}$")
     aggregation: str = Field(default="max", pattern=r"^(avg|max|min|p95|rate)$")
 
 
 class QueryTracesInput(TimeRangeToolInput):
-    """Validated trace search filters."""
+    """经过校验的 Trace 搜索过滤条件。"""
 
     operation: str | None = Field(default=None, min_length=1, max_length=128)
     status: str | None = Field(default=None, pattern=r"^(ok|error|timeout)$")
 
 
 class GetServiceTopologyInput(ToolInput):
-    """Validated point-in-time topology lookup."""
+    """经过校验的指定时间点拓扑查询。"""
 
     at_time: AwareDatetime
     depth: int = Field(default=1, ge=1, le=3)
@@ -82,7 +82,7 @@ class GetServiceTopologyInput(ToolInput):
 
 
 class GetRecentChangesInput(TimeRangeToolInput):
-    """Validated deployment and configuration change lookup."""
+    """经过校验的部署和配置变更查询。"""
 
     change_type: str | None = Field(
         default=None,
@@ -91,14 +91,14 @@ class GetRecentChangesInput(TimeRangeToolInput):
 
 
 class SearchRunbooksInput(ToolInput):
-    """Validated runbook search request."""
+    """经过校验的 Runbook 搜索请求。"""
 
     query: str = Field(min_length=2, max_length=256)
     limit: int = Field(default=5, ge=1, le=20)
 
 
 class SearchSimilarIncidentsInput(ToolInput):
-    """Validated historical incident search request."""
+    """经过校验的历史事故搜索请求。"""
 
     query: str = Field(min_length=2, max_length=256)
     before_time: AwareDatetime
@@ -107,7 +107,7 @@ class SearchSimilarIncidentsInput(ToolInput):
 
 
 class ToolExecutionResult(DomainModel):
-    """Measured result returned by the unified registry wrapper."""
+    """统一 Registry Wrapper 返回的实际测量结果。"""
 
     tool_name: str = Field(pattern=r"^[a-z][a-z0-9_]{1,63}$")
     evidence: tuple[Evidence, ...] = Field(default_factory=tuple, max_length=50)

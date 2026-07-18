@@ -1,10 +1,10 @@
-"""Normalized provider and tool execution failures."""
+"""规范化的 Provider 和工具执行失败。"""
 
 from enum import StrEnum
 
 
 class ProviderErrorCategory(StrEnum):
-    """Stable failure categories shared by provider adapters and tool callers."""
+    """Provider Adapter 和工具调用方共享的稳定失败类别。"""
 
     INVALID_QUERY = "invalid_query"
     TIMEOUT = "timeout"
@@ -15,7 +15,7 @@ class ProviderErrorCategory(StrEnum):
 
 
 class ProviderError(Exception):
-    """Base provider failure with retry classification and safe context."""
+    """带有重试分类和安全上下文的 Provider 基础失败。"""
 
     category = ProviderErrorCategory.INTERNAL
     retryable = False
@@ -28,60 +28,60 @@ class ProviderError(Exception):
 
 
 class ProviderInvalidQueryError(ProviderError):
-    """A provider rejected a semantically invalid query."""
+    """Provider 拒绝了语义无效的查询。"""
 
     category = ProviderErrorCategory.INVALID_QUERY
 
 
 class ProviderTimeoutError(ProviderError):
-    """A provider did not complete inside its bounded timeout."""
+    """Provider 未在有界超时内完成。"""
 
     category = ProviderErrorCategory.TIMEOUT
     retryable = True
 
 
 class ProviderUnavailableError(ProviderError):
-    """A provider is temporarily unavailable."""
+    """Provider 暂时不可用。"""
 
     category = ProviderErrorCategory.UNAVAILABLE
     retryable = True
 
 
 class ProviderRateLimitedError(ProviderError):
-    """A provider temporarily rejected work due to rate limiting."""
+    """Provider 因限流而暂时拒绝执行。"""
 
     category = ProviderErrorCategory.RATE_LIMITED
     retryable = True
 
 
 class ProviderMalformedResponseError(ProviderError):
-    """A provider returned data that violates the evidence contract."""
+    """Provider 返回了违反证据契约的数据。"""
 
     category = ProviderErrorCategory.MALFORMED_RESPONSE
 
 
 class ToolError(Exception):
-    """Base class for safe failures exposed by the tool layer."""
+    """工具层公开的安全失败基类。"""
 
 
 class ToolRegistrationError(ToolError):
-    """A registry definition is invalid or conflicts with an existing tool."""
+    """Registry 定义无效或与现有工具冲突。"""
 
 
 class ToolNotFoundError(ToolError):
-    """A caller requested a tool outside the registry allow-list."""
+    """调用方请求了 Registry 白名单之外的工具。"""
 
 
 class ToolInvalidArgumentsError(ToolError):
-    """Tool arguments failed strict schema validation."""
+    """工具参数未通过严格 Schema 校验。"""
 
 
 class ToolBudgetExceededError(ToolError):
-    """The caller has no remaining tool-call budget."""
+    """调用方已经没有剩余工具调用预算。"""
 
 
 class ToolExecutionError(ToolError):
-    """A provider failure normalized at the tool boundary."""
+    """在工具边界规范化后的 Provider 失败。"""
 
     def __init__(
         self,

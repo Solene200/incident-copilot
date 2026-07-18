@@ -1,4 +1,4 @@
-"""Deterministic offline provider backed by a versioned incident fixture."""
+"""由版本化事故 Fixture 支持的确定性离线 Provider。"""
 
 import json
 import re
@@ -22,7 +22,7 @@ from incident_copilot.tools.schemas import (
 
 
 class FixtureProvider:
-    """Implement every Phase 2 provider port over one immutable fixture."""
+    """基于一个不可变 Fixture 实现全部 Phase 2 Provider 端口。"""
 
     def __init__(self, fixture: IncidentFixture) -> None:
         self._fixture = fixture
@@ -30,25 +30,25 @@ class FixtureProvider:
 
     @property
     def fixture(self) -> IncidentFixture:
-        """Expose the validated envelope for tests and demo metadata only."""
+        """仅向测试和演示元数据暴露已校验的外层对象。"""
         return self._fixture
 
     @classmethod
     def from_path(cls, path: Path) -> "FixtureProvider":
-        """Load and fully validate a UTF-8 fixture before serving any query."""
+        """在处理任何查询前加载并完整校验 UTF-8 Fixture。"""
         fixture = IncidentFixture.model_validate_json(path.read_text(encoding="utf-8"))
         return cls(fixture)
 
     @classmethod
     def payment_service(cls) -> "FixtureProvider":
-        """Load the repository's canonical payment-service incident scenario."""
+        """加载仓库中的规范 payment-service 事故场景。"""
         repository_root = Path(__file__).parents[4]
         return cls.from_path(
             repository_root / "data" / "incidents" / "payment-service-pool-exhaustion.json"
         )
 
     async def search(self, query: SearchLogsInput, context: QueryContext) -> tuple[Evidence, ...]:
-        """Return deterministic log evidence matching service, time, and text."""
+        """返回与服务、时间和文本匹配的确定性日志证据。"""
         del context
         matches = self._by_source_service(SourceType.LOG, query.service)
         matches = self._within_window(matches, query.start_time, query.end_time)
@@ -61,7 +61,7 @@ class FixtureProvider:
         query: QueryMetricsInput | QueryTracesInput,
         context: QueryContext,
     ) -> tuple[Evidence, ...]:
-        """Dispatch the two query-shaped provider ports by validated input type."""
+        """按照已校验输入类型分发两个查询型 Provider 端口。"""
         del context
         if isinstance(query, QueryMetricsInput):
             matches = self._by_source_service(SourceType.METRIC, query.service)
@@ -90,7 +90,7 @@ class FixtureProvider:
     async def recent(
         self, query: GetRecentChangesInput, context: QueryContext
     ) -> tuple[Evidence, ...]:
-        """Return newest matching deployment/configuration changes first."""
+        """优先返回最新的匹配部署或配置变更。"""
         del context
         matches = self._by_source_service(SourceType.CHANGE, query.service)
         matches = self._within_window(matches, query.start_time, query.end_time)
@@ -103,7 +103,7 @@ class FixtureProvider:
     async def get(
         self, query: GetServiceTopologyInput, context: QueryContext
     ) -> tuple[Evidence, ...]:
-        """Return the latest topology snapshot at or before the requested time."""
+        """返回请求时间或更早时间中的最新拓扑快照。"""
         del context
         matches = self._by_source_service(SourceType.TOPOLOGY, query.service)
         matches = (
@@ -118,7 +118,7 @@ class FixtureProvider:
     async def search_runbooks(
         self, query: SearchRunbooksInput, context: QueryContext
     ) -> tuple[Evidence, ...]:
-        """Return fixture knowledge explicitly classified as runbooks."""
+        """返回明确分类为 Runbook 的 Fixture 知识。"""
         del context
         matches = self._knowledge(query.service, "runbook", query.query)
         return self._ordered(matches, newest_first=True)[: query.limit]
@@ -126,7 +126,7 @@ class FixtureProvider:
     async def search_similar_incidents(
         self, query: SearchSimilarIncidentsInput, context: QueryContext
     ) -> tuple[Evidence, ...]:
-        """Return historical incidents inside the caller's bounded lookback."""
+        """返回调用方有界回溯窗口内的历史事故。"""
         del context
         earliest = query.before_time - timedelta(days=query.lookback_days)
         matches = self._knowledge(query.service, "incident", query.query)

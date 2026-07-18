@@ -1,4 +1,4 @@
-"""Provider ports consumed by the tool layer."""
+"""工具层使用的 Provider 端口。"""
 
 from collections.abc import Sequence
 from typing import Protocol, runtime_checkable
@@ -18,68 +18,68 @@ from incident_copilot.tools.schemas import (
 
 @runtime_checkable
 class LogProvider(Protocol):
-    """Port for bounded log evidence searches."""
+    """有界日志证据搜索端口。"""
 
     async def search(self, query: SearchLogsInput, context: QueryContext) -> Sequence[Evidence]:
-        """Return matching log evidence or an empty sequence."""
+        """返回匹配的日志证据或空序列。"""
         ...
 
 
 @runtime_checkable
 class MetricsProvider(Protocol):
-    """Port for bounded metric evidence queries."""
+    """有界指标证据查询端口。"""
 
     async def query(self, query: QueryMetricsInput, context: QueryContext) -> Sequence[Evidence]:
-        """Return matching metric evidence or an empty sequence."""
+        """返回匹配的指标证据或空序列。"""
         ...
 
 
 @runtime_checkable
 class TraceProvider(Protocol):
-    """Port for bounded distributed trace searches."""
+    """有界分布式 Trace 搜索端口。"""
 
     async def query(self, query: QueryTracesInput, context: QueryContext) -> Sequence[Evidence]:
-        """Return matching trace evidence or an empty sequence."""
+        """返回匹配的 Trace 证据或空序列。"""
         ...
 
 
 @runtime_checkable
 class ChangeProvider(Protocol):
-    """Port for recent deployment and configuration changes."""
+    """近期部署和配置变更查询端口。"""
 
     async def recent(
         self, query: GetRecentChangesInput, context: QueryContext
     ) -> Sequence[Evidence]:
-        """Return matching change evidence or an empty sequence."""
+        """返回匹配的变更证据或空序列。"""
         ...
 
 
 @runtime_checkable
 class TopologyProvider(Protocol):
-    """Port for point-in-time service topology evidence."""
+    """指定时间点的服务拓扑证据端口。"""
 
     async def get(
         self, query: GetServiceTopologyInput, context: QueryContext
     ) -> Sequence[Evidence]:
-        """Return matching topology evidence or an empty sequence."""
+        """返回匹配的拓扑证据或空序列。"""
         ...
 
 
 @runtime_checkable
 class KnowledgeProvider(Protocol):
-    """Phase 2 port for deterministic runbook and incident lookup.
+    """确定性 Runbook 和历史事故查找使用的 Phase 2 端口。
 
-    Phase 3 may adapt this port to hybrid retrieval without changing tool names.
+    Phase 3 可以在不修改工具名称的情况下把该端口适配到混合检索。
     """
 
     async def search_runbooks(
         self, query: SearchRunbooksInput, context: QueryContext
     ) -> Sequence[Evidence]:
-        """Return matching runbook evidence or an empty sequence."""
+        """返回匹配的 Runbook 证据或空序列。"""
         ...
 
     async def search_similar_incidents(
         self, query: SearchSimilarIncidentsInput, context: QueryContext
     ) -> Sequence[Evidence]:
-        """Return matching historical incident evidence or an empty sequence."""
+        """返回匹配的历史事故证据或空序列。"""
         ...

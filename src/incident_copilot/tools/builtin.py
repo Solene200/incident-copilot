@@ -1,4 +1,4 @@
-"""Composition of the seven Phase 2 read-only tools."""
+"""七个 Phase 2 只读工具的组合。"""
 
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -28,7 +28,7 @@ from incident_copilot.tools.schemas import (
 
 @dataclass(frozen=True, slots=True)
 class ProviderBundle:
-    """Explicit dependency injection for every Phase 2 provider port."""
+    """为每个 Phase 2 Provider 端口提供显式依赖注入。"""
 
     logs: LogProvider
     metrics: MetricsProvider
@@ -45,7 +45,7 @@ def build_tool_registry(
     max_retries: int = 1,
     retry_backoff_seconds: float = 0.01,
 ) -> ToolRegistry:
-    """Register all seven tools against injected providers."""
+    """使用注入的 Provider 注册全部七个工具。"""
     registry = ToolRegistry(retry_backoff_seconds=retry_backoff_seconds)
 
     async def search_logs(query: SearchLogsInput, context: QueryContext) -> Sequence[Evidence]:

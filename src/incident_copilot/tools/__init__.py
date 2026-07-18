@@ -1,4 +1,4 @@
-"""Validated provider ports and read-only investigation tools."""
+"""经过校验的 Provider 端口和只读调查工具。"""
 
 from incident_copilot.tools.builtin import ProviderBundle, build_tool_registry
 from incident_copilot.tools.providers import FixtureProvider, PrometheusMetricsProvider
