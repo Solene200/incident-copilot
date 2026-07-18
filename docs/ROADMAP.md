@@ -1,0 +1,275 @@
+# IncidentCopilot 路线图与阶段验收
+
+## 1. 使用规则
+
+- 一次只执行用户明确指定的一个 Phase。
+- 状态只使用 `not_started`、`in_progress`、`completed`、`blocked`；完成必须有真实检查证据。
+- 每阶段从可运行的上一阶段开始，以可运行、可测试的仓库结束。
+- 后一阶段不得为了方便提前污染前一阶段的范围。
+- 质量指标与性能数字只有运行 Evaluation 后才能填写，不允许用目标值冒充结果。
+
+## 2. 总览
+
+| Phase | 名称 | 状态 | 核心演示增量 |
+| --- | --- | --- | --- |
+| 0 | 需求、架构和规范 | completed | 可评审的产品/架构/Graph/数据模型蓝图 |
+| 1 | 工程骨架和领域模型 | completed | FastAPI `/health` + 领域模型测试 |
+| 2 | Fixture Provider 和工具层 | not_started | 七类本地工具返回结构化证据 |
+| 3 | RAG Indexing 和 Retrieval | not_started | 可复现 Hybrid Search 与引用 |
+| 4 | LangGraph 调查工作流 | not_started | 完整有界调查循环与报告 |
+| 5 | API、Streaming、Checkpoint、HITL | not_started | 可创建、观察、恢复和审核调查 |
+| 6 | Evaluation 和 Agent 可观测性 | not_started | 可复现质量/成本/时延报告 |
+| 7 | 真实数据源和演示 | not_started | 真实 Adapter + Docker 演示 + 面试材料 |
+
+## 3. Phase 0：需求、架构和项目规范
+
+### 目标与范围
+
+只创建规划文档，不实现业务代码、依赖文件、容器、fixture 或测试代码。
+
+### 产出
+
+- `AGENTS.md`
+- `docs/PRD.md`
+- `docs/ARCHITECTURE.md`
+- `docs/GRAPH_DESIGN.md`
+- `docs/DATA_MODEL.md`
+- `docs/ROADMAP.md`
+- `docs/PROGRESS.md`
+- 目录结构规划、技术取舍、Mermaid 架构图和 Graph 图
+
+### 验收标准
+
+- [x] 产品目标、用户、功能、非功能、范围外事项和成功定义清晰。
+- [x] 架构组件职责、端口、数据流、失败策略、安全和可观测性清晰。
+- [x] Graph 覆盖并行、reducer、研究循环、预算、checkpoint、HITL 和 streaming。
+- [x] State 区分覆盖、累积和不可暴露给 LLM 的字段，并说明大小控制。
+- [x] 四个核心领域模型、引用、计划、错误和知识 Chunk 有字段与不变量。
+- [x] 至少有一张总体架构 Mermaid 图和一张 Graph Mermaid 图。
+- [x] 每个后续 Phase 都有输入、产出、测试和完成定义。
+- [x] 不存在 Phase 1 业务代码或伪造的测试结果。
+- [x] 文档结构、相对链接、Mermaid fence 和敏感信息扫描通过。
+
+### 实际检查
+
+详见 [`PROGRESS.md`](PROGRESS.md) 的 Phase 0 记录。
+
+## 4. Phase 1：工程骨架和领域模型
+
+### 输入条件
+
+- 用户确认 Phase 0。
+- 可安装或可调用 `uv`；若需联网下载依赖，获得相应权限。
+- 技术版本范围重新核验，尤其是 LangGraph/LangChain/Pydantic 兼容关系。
+
+### 产出
+
+- `pyproject.toml`、由 uv 生成的 `uv.lock`、`.env.example`、基础 README/Makefile。
+- `src` layout、FastAPI app factory、`/health`。
+- Pydantic Settings、JSON 结构化日志、异常层次与 API 错误 Schema。
+- Incident/Evidence/Hypothesis/Report 的阶段内领域模型。
+- Fixture 目录规范与最小无敏感信息样例结构。
+- Ruff、mypy、pytest、pytest-asyncio 配置和基础单测。
+
+### 关键测试
+
+- 配置默认值/环境覆盖/秘密不回显。
+- 所有时间必须带时区，非法时间窗口拒绝。
+- 分数、枚举、证据引用与假设集合不变量。
+- `/health` 正常返回；异常到 API 错误映射。
+- 应用导入不需要 API Key 或外部服务。
+
+### 完成定义
+
+- `uv lock --check`、Ruff format/check、mypy 和 Phase 1 pytest 全部通过。
+- `uv run uvicorn ...` 可启动，`/health` 有真实请求验证。
+- README 记录本地命令；PROGRESS 和本路线图更新真实结果。
+
+### 实际验收
+
+- [x] `uv sync` 和 `uv lock --check` 成功，锁文件解析 37 个包。
+- [x] Ruff format/check 全部通过。
+- [x] `mypy src` 与 `mypy src tests` 全部通过。
+- [x] Phase 1 相关测试与全量测试均为 29 passed、0 failed、0 warning。
+- [x] 独立 Uvicorn 进程启动后，真实 HTTP `/health` 请求返回 200 和预期 JSON。
+- [x] 默认导入、启动与测试不需要 API Key、Docker、数据库或网络服务。
+- [x] 未实现 Provider、RAG、LangGraph、持久化或其它 Phase 2+ 功能。
+
+## 5. Phase 2：Fixture Provider 和工具层
+
+### 输入条件
+
+- Phase 1 通过；领域 Evidence 与异常契约稳定。
+
+### 产出
+
+- Log/Metrics/Trace/Change/Topology/Knowledge Provider Protocol。
+- Fixture Provider、Tool Registry、结构化输入/输出、统一执行包装器。
+- 七个工具：日志、指标、Trace、拓扑、近期变更、Runbook、类似事故。
+- payment-service 基准事件的日志、指标、Trace、变更、拓扑 fixture。
+- 超时、重试、参数边界、错误转换和结构化遥测。
+
+### 关键测试
+
+- 每个 Provider 的正常、空结果、过滤、limit 和引用。
+- 非法服务/时间/查询窗口拒绝。
+- 超时与临时故障有限重试；永久错误不重试。
+- Registry 重名、未知工具、预算和统计。
+- 一个 Provider 失败不影响直接调用其它 Provider。
+
+### 完成定义
+
+- 七类工具均有独立单测与固定输出快照/结构断言。
+- 默认测试无网络；Ruff、mypy、相关 pytest 通过。
+- fixture ground truth 与噪声设计在文档中可审阅。
+
+## 6. Phase 3：RAG Indexing 和 Retrieval
+
+### 输入条件
+
+- Phase 2 通过；Knowledge Retriever 契约可实现。
+
+### 产出
+
+- 文档加载、规范化、切分、metadata、内容 hash 与幂等 ingest。
+- 确定性 Fake Embedding、内存 VectorStore、pgvector Adapter。
+- BM25、向量检索、RRF Hybrid Search、去重、metadata filter、可选 reranker。
+- Query rewrite、上下文压缩与 citation 保留。
+- 少量 Runbook、服务说明和历史事故文档。
+
+### 关键测试
+
+- 切分边界、metadata 继承、幂等重建和 embedding 确定性。
+- BM25/向量/混合排序、过滤、去重、top_k 和引用解析。
+- pgvector Adapter 使用受控数据库集成测试；默认单测不要求数据库。
+- 小型固定数据集计算 Recall@K、MRR；逐样本结果落盘/输出，不虚构分数。
+
+### 完成定义
+
+- 同一 fixture 多次 ingest/search 结果稳定。
+- 每个返回 Chunk 有可解析 Citation。
+- 无在线 Embedding API 时所有必需测试通过。
+
+## 7. Phase 4：LangGraph 调查工作流
+
+### 输入条件
+
+- Phase 2 工具与 Phase 3 Retriever 稳定；Fake Model 契约明确。
+
+### 产出
+
+- `IncidentState`、自定义 reducer、Graph builder、路由纯函数与节点。
+- 动态并行证据收集、聚合、假设生成/验证、充分性判断和 refine 循环。
+- 研究轮数、工具、Token、deadline 与并发预算。
+- 最终报告、失败降级和 Graph Mermaid 可视化。
+- 可复现 Fake Model；真实模型只作为可选 Provider。
+
+### 关键测试
+
+- [`GRAPH_DESIGN.md`](GRAPH_DESIGN.md) 第 9 节的完整矩阵。
+- 节点单测、路由真值表、reducer 结合/交换/幂等属性或等价用例。
+- 正常和失败图路径的端到端固定断言。
+
+### 完成定义
+
+- Fixture 基准事故生成结构化、带引用报告。
+- 循环在所有预算边界精确停止，无路径可无限执行。
+- 部分 Provider 失败仍产出诚实的受限报告。
+- 图测试、静态检查通过，生成图与文档一致。
+
+## 8. Phase 5：API、Streaming、Checkpoint 和 HITL
+
+### 输入条件
+
+- Phase 4 图可通过编程接口启动并确定性完成。
+
+### 产出
+
+- 创建调查、查询状态、获取报告和提交审核 API。
+- 后台调查生命周期与幂等请求策略。
+- 版本化 SSE 事件、thread/run ID、重连语义。
+- 内存测试 checkpointer + PostgreSQL 目标 checkpointer。
+- `interrupt` / `Command(resume=...)` 的接受与追加调查流程。
+
+### 关键测试
+
+- API 校验、404/409/422/500 错误契约与幂等创建。
+- SSE 顺序、终止事件、心跳/断连和敏感字段过滤。
+- checkpoint 中断后跨 app 实例恢复（数据库集成环境）。
+- 人审接受、追加调查、无预算时拒绝追加。
+
+### 完成定义
+
+- 真实 HTTP 客户端可完成创建→流式观察→审核→报告全链路。
+- 进程重建后用 thread ID 恢复的集成测试通过。
+- API 不泄露原始 State、秘密或未脱敏证据。
+
+## 9. Phase 6：Evaluation 和 Agent 可观测性
+
+### 输入条件
+
+- Phase 5 有稳定调用与事件接口；报告 Schema 定版。
+
+### 产出
+
+- 版本化小型离线事故数据集和 ground truth。
+- Evaluation Runner 与逐样本 JSON/表格结果。
+- 服务定位、故障类型、Recall@K、MRR、Evidence Relevance、Citation Correctness。
+- Tool 选择/参数、根因诊断、平均轮数、调用数、端到端时延和 Token/估算成本。
+- 节点/工具/模型 OpenTelemetry spans；可选 LangSmith exporter。
+- `docs/EVALUATION.md`。
+
+### 关键测试
+
+- 每个 evaluator 用手算样例验证边界、空集合和分母。
+- Runner 失败样本不丢失，聚合结果可追溯到逐样本。
+- Fake Token 与真实 Token 标记区分；成本缺定价时为 unavailable。
+- Telemetry 关闭时零外部依赖且业务不变。
+
+### 完成定义
+
+- 一条命令在离线模式生成真实评估报告。
+- 文档报告实际数值、数据集大小、置信限制和失败样本。
+- 不把 fixture 测试通过率包装成泛化准确率。
+
+## 10. Phase 7：真实数据源和演示
+
+### 输入条件
+
+- Phase 6 有可比较基线；本机可运行容器或明确的替代环境。
+
+### 产出
+
+- 至少一个 Prometheus/Loki/Tempo/OpenTelemetry Demo 真实 Adapter。
+- Docker Compose、健康检查、迁移/seed/ingest/demo/evaluation 脚本。
+- 可选 Streamlit 页面，不得成为核心依赖。
+- 完整 README、架构与演示场景、`docs/INTERVIEW_GUIDE.md`。
+- 简历项目描述、面试问题与参考答案。
+
+### 关键测试
+
+- Provider contract tests 同时运行 fixture 与真实 Adapter。
+- Compose 冷启动、健康检查、seed、调查和清理说明验证。
+- Demo 命令在全新环境按 README 实际执行。
+- 真实 Adapter 不可用时 fixture 路径仍完整。
+
+### 完成定义
+
+- 一条受支持命令启动依赖，一条命令运行基准演示。
+- README 的所有快速开始步骤在干净环境验证。
+- 面试材料能解释设计取舍、失败模式与真实评估结果。
+- 所有必需检查通过，已知限制显式记录。
+
+## 11. 跨阶段质量门禁
+
+Phase 1 起每阶段至少运行：
+
+```text
+uv lock --check
+uv run ruff format --check .
+uv run ruff check .
+uv run mypy src tests
+uv run pytest <本阶段相关目录>
+```
+
+阶段报告必须区分：通过、失败、因当前范围不适用、因环境阻塞未运行。后两者不能写成通过。

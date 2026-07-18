@@ -1,0 +1,57 @@
+{
+  "schema_version": "1.0",
+  "name": "phase-1-schema-example",
+  "description": "Sanitized structure example used to verify the Phase 1 fixture contract.",
+  "contains_sensitive_data": false,
+  "incident": {
+    "incident_id": "inc_example_001",
+    "raw_query": "example-service returned elevated errors during a bounded time window",
+    "services": [
+      "example-service"
+    ],
+    "start_time": "2026-07-18T10:20:00+08:00",
+    "end_time": "2026-07-18T10:40:00+08:00",
+    "symptoms": [
+      "elevated error rate"
+    ],
+    "severity": "sev3",
+    "environment": "development",
+    "created_at": "2026-07-18T10:45:00+08:00",
+    "timezone_assumption": null
+  },
+  "evidence": [
+    {
+      "evidence_id": "ev_example_log_001",
+      "source_type": "log",
+      "source_name": "fixture-example",
+      "title": "Sanitized example log",
+      "content": "example error without customer or credential data",
+      "summary": "An example error occurred inside the incident window.",
+      "timestamp": "2026-07-18T10:25:00+08:00",
+      "start_time": null,
+      "end_time": null,
+      "service": "example-service",
+      "relevance_score": 0.8,
+      "reliability_score": 0.9,
+      "metadata": {
+        "fixture": true
+      },
+      "citation": {
+        "citation_id": "cit_example_log_001",
+        "uri": "fixture://incidents/example.json",
+        "locator": "evidence[0]",
+        "display_name": "Phase 1 fixture schema example",
+        "retrieved_at": "2026-07-18T10:46:00+08:00",
+        "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "collected_at": "2026-07-18T10:46:00+08:00"
+    }
+  ],
+  "ground_truth": null,
+  "tags": [
+    "schema-example",
+    "sanitized"
+  ]
+}
+
