@@ -1,6 +1,6 @@
-"""Checkpoint-aware investigation lifecycle and safe event projection.
+"""支持 checkpoint 的调查生命周期和安全事件投影。
 
-中文教学说明:这是 HTTP 层与 LangGraph 之间的应用服务。它负责调查任务状态机、后台
+这是 HTTP 层与 LangGraph 之间的应用服务。它负责调查任务状态机、后台
 ``asyncio.Task``、事件投影、幂等创建和 checkpoint 恢复;Graph 仍负责证据调查本身。
 理解本文件时要区分三类状态:Repository 中的任务状态、Graph checkpoint 中的工作流
 State,以及发送给 SSE 客户端的安全事件。
@@ -42,9 +42,9 @@ _QUIESCENT_STATUSES = {
 
 
 class InvestigationService:
-    """Own task transitions while LangGraph owns checkpointed workflow state.
+    """管理任务状态转换,由 LangGraph 管理 checkpoint 中的工作流状态。
 
-    中文:Service 管理 pending/running/waiting_review/completed/failed 等应用状态;
+    Service 管理 pending/running/waiting_review/completed/failed 等应用状态;
     LangGraph 通过 ``thread_id`` 管理节点执行位置与 InvestigationState。两者职责不同,
     因此 PostgreSQL checkpoint 不能替代持久化的任务/事件 Repository。
     """
@@ -64,13 +64,13 @@ class InvestigationService:
 
     @property
     def repository(self) -> InvestigationRepository:
-        """Expose the repository port to the SSE transport adapter."""
+        """向 SSE 传输层提供 Repository 端口。"""
         return self._repository
 
     async def aclose(self) -> None:
-        """Cancel and observe all process-local executions before dependencies close.
+        """在依赖关闭前取消并等待所有进程内执行任务。
 
-        中文:应用关闭时先取消并 await 所有进程内任务,避免 Graph 仍在使用已关闭的
+        应用关闭时先取消并 await 所有进程内任务,避免 Graph 仍在使用已关闭的
         Checkpointer 或 Provider 资源。
         """
         tasks = tuple(self._tasks.values())
@@ -89,9 +89,9 @@ class InvestigationService:
         request_fingerprint: str,
         idempotency_key: str | None,
     ) -> tuple[InvestigationRecord, bool]:
-        """Create idempotently and schedule one offline background execution.
+        """幂等创建调查并调度一次后台执行。
 
-        中文:Repository 以 Idempotency-Key 和请求指纹决定是新建还是重放。只有真正
+        Repository 以 Idempotency-Key 和请求指纹决定是新建还是重放。只有真正
         新建的记录才会产生 queued 事件并启动后台 Graph,避免同一请求重复调查。
         """
         now = self._clock()
@@ -113,14 +113,14 @@ class InvestigationService:
         if not created:
             return stored, False
         await self._append_event(stored, EventType.INVESTIGATION_QUEUED, {"status": "pending"})
-        # 中文:HTTP 请求立即返回 202;耗时 Graph 在独立 asyncio.Task 中推进。
+        # HTTP 请求立即返回 202;耗时 Graph 在独立 asyncio.Task 中推进。
         self._start_task(stored.investigation_id, self._run_initial(stored.investigation_id))
         return stored, True
 
     async def get(self, investigation_id: str) -> InvestigationRecord:
-        """Return task metadata, rebuilding a missing paused record from its checkpoint.
+        """返回任务元数据,必要时从 checkpoint 重建缺失的暂停记录。
 
-        中文:内存 Repository 在进程重建后可能为空;此时通过稳定 ID 推导 thread ID,
+        内存 Repository 在进程重建后可能为空;此时通过稳定 ID 推导 thread ID,
         从 checkpoint 重建最小任务投影。历史 SSE 事件不会因此恢复。
         """
         try:
@@ -133,9 +133,9 @@ class InvestigationService:
         investigation_id: str,
         feedback: HumanFeedback,
     ) -> InvestigationRecord:
-        """Atomically claim one paused checkpoint and schedule its resume command.
+        """原子认领暂停的 checkpoint 并调度恢复命令。
 
-        中文:锁保证同一调查只能被一次恢复请求认领。读取 Graph 快照后先验证追加研究
+        锁保证同一调查只能被一次恢复请求认领。读取 Graph 快照后先验证追加研究
         仍有预算,再把任务改为 running,最后用 ``Command(resume=feedback)`` 继续同一个
         ``thread_id``。重复恢复会因为状态不再是 waiting_review 而得到冲突。
         """
@@ -151,7 +151,7 @@ class InvestigationService:
             snapshot = await self._graph.aget_state(config)
             state = cast(InvestigationState, snapshot.values)
             if feedback.action is ReviewAction.REQUEST_MORE_RESEARCH:
-                # 中文:人工反馈也不能突破研究轮数、工具、模型和 Token 等硬预算。
+                # 人工反馈也不能突破研究轮数、工具、模型和 Token 等硬预算。
                 self._ensure_research_budget(state)
             now = self._clock()
             claimed = record.model_copy(
@@ -179,7 +179,7 @@ class InvestigationService:
                 resume=feedback.model_dump(mode="json"),
                 update=update,
             )
-            # 中文:resume 仍放入后台任务,API 只确认恢复请求已被接受。
+            # resume 仍放入后台任务,API 只确认恢复请求已被接受。
             self._start_task(
                 investigation_id,
                 self._execute(investigation_id, command),
@@ -192,9 +192,9 @@ class InvestigationService:
         *,
         timeout_seconds: float = 5.0,
     ) -> InvestigationRecord:
-        """Wait for a pause or terminal state; intended for controlled clients and tests.
+        """等待任务进入暂停或终止状态。
 
-        中文:这是受控轮询辅助方法,不是生产任务队列;主要供脚本和测试等待可观察结果。
+        这是受控轮询辅助方法,不是生产任务队列;主要供脚本和测试等待可观察结果。
         """
         deadline = asyncio.get_running_loop().time() + timeout_seconds
         while True:
@@ -354,7 +354,7 @@ class InvestigationService:
             values = cast(InvestigationState, snapshot.values)
             report = values.get("final_report")
             if interrupt_value is not None:
-                # 中文:存在 interrupt 表示 Graph 已安全暂停,而不是执行失败。
+                # 存在 interrupt 表示 Graph 已安全暂停,而不是执行失败。
                 review_request = HumanReviewRequest.model_validate(interrupt_value)
                 waiting = latest.model_copy(
                     update={
@@ -373,7 +373,7 @@ class InvestigationService:
                 )
                 return
             if report is None:
-                # 中文:Graph 没有报告不能伪装成 completed,统一进入 failed 路径。
+                # Graph 没有报告不能伪装成 completed,统一进入 failed 路径。
                 raise RuntimeError("graph completed without a final report")
             completed = latest.model_copy(
                 update={

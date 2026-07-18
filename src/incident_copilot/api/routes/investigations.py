@@ -1,6 +1,6 @@
-"""Investigation creation, status, SSE, and human resume endpoints.
+"""调查创建、状态查询、SSE 和人工恢复接口。
 
-中文教学说明:本模块是 HTTP/SSE 协议适配层。它把外部请求转换为经过 Pydantic 校验的
+本模块是 HTTP/SSE 协议适配层。它把外部请求转换为经过 Pydantic 校验的
 领域输入,再委托 ``InvestigationService`` 管理生命周期;路由本身不直接调用 Graph、
 Provider 或数据库。四个公开端点共同组成“创建 → 查询/订阅 → 人工恢复”的调用入口。
 """
@@ -44,9 +44,9 @@ async def create_investigation(
         Header(alias="Idempotency-Key", min_length=1, max_length=128),
     ] = None,
 ) -> InvestigationResponse:
-    """Create an asynchronous investigation using an optional idempotency key.
+    """使用可选幂等键创建异步调查。
 
-    中文:请求在这里取得新的 incident ID;稳定的 investigation/thread/run 标识及后台
+    请求在这里取得新的 incident ID;稳定的 investigation/thread/run 标识及后台
     执行由 Service 创建。返回 202 表示任务已接收,不表示调查已经完成。
     """
     incident = payload.to_incident(f"inc_{uuid4().hex}")
@@ -65,9 +65,9 @@ async def create_investigation(
 
 @router.get("/{investigation_id}", response_model=InvestigationResponse)
 async def get_investigation(investigation_id: str, request: Request) -> InvestigationResponse:
-    """Return the current task status and report projection when available.
+    """返回当前任务状态,并在报告可用时返回安全投影。
 
-    中文:只返回安全的任务投影;原始 Graph State、完整工具载荷和秘密不会直接暴露。
+    原始 Graph State、完整工具载荷和秘密不会直接暴露。
     """
     record = await _service(request).get(investigation_id)
     return InvestigationResponse.from_record(record)
@@ -83,9 +83,9 @@ async def resume_investigation(
     payload: ResumeInvestigationRequest,
     request: Request,
 ) -> InvestigationResponse:
-    """Resume one paused checkpoint with an allow-listed human decision.
+    """使用白名单内的人工决策恢复一个暂停的 checkpoint。
 
-    中文:``ResumeInvestigationRequest`` 只允许接受或追加研究。真正的 checkpoint 读取、
+    ``ResumeInvestigationRequest`` 只允许接受或追加研究。真正的 checkpoint 读取、
     预算检查和 ``Command(resume=...)`` 构造在 Service 中完成。
     """
     record = await _service(request).resume(investigation_id, payload)
@@ -98,9 +98,9 @@ async def stream_investigation_events(
     request: Request,
     last_event_id: Annotated[str | None, Header(alias="Last-Event-ID")] = None,
 ) -> StreamingResponse:
-    """Stream ordered safe events and support reconnection from the last event ID.
+    """按顺序流式传输安全事件,并支持从最后一个事件 ID 重连。
 
-    中文:SSE 传输的是应用事件,而不是 LangGraph 的内部 State。客户端可以通过
+    SSE 传输的是应用事件,而不是 LangGraph 的内部 State。客户端可以通过
     ``Last-Event-ID`` 从已确认序号之后继续读取。
     """
     service = _service(request)
@@ -146,7 +146,7 @@ async def _event_stream(
             yield _format_sse(event)
             sequence = event.sequence
         record = await service.get(investigation_id)
-        # 中文:暂停、完成或失败后关闭当前流,避免客户端无限等待不会到来的事件。
+        # 暂停、完成或失败后关闭当前流,避免客户端无限等待不会到来的事件。
         if record.status in _STREAM_END_STATUSES:
             return
         if await request.is_disconnected():
@@ -157,7 +157,7 @@ async def _event_stream(
             timeout_seconds=heartbeat_seconds,
         )
         if not events:
-            # 中文:注释行是合法 SSE heartbeat,不会被当作业务事件处理。
+            # 注释行是合法 SSE heartbeat,不会被当作业务事件处理。
             yield ": heartbeat\n\n"
 
 
