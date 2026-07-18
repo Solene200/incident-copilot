@@ -46,7 +46,9 @@ return InvestigationState(
 
 它把 API 已校验 Incident 和 Options 转成完整初值。时钟可注入使 deadline 测试确定。State 从这里开始存在；下一节点固定是 `parse_incident`。若省略 reducer 字段的零值，后续合并语义更难推理；若使用模型输出覆盖预算，就失去安全边界。
 
-## `_dispatch_batch`：在 fan-out 前预留预算
+## `dispatch_evidence_collection`、`dispatch_after_aggregate` 与 `_dispatch_batch`
+
+`dispatch_evidence_collection` 是 plan/refine 后的入口：已有 `stop_reason` 时直接去报告，否则调用 `_dispatch_batch(..., empty_target="aggregate_evidence")`。`dispatch_after_aggregate` 是批次 barrier 后的入口：仍有步骤就继续发 Send，计划耗尽时以 `generate_hypotheses` 为 empty target。两者复用下面的预算预留逻辑。
 
 ```python
 remaining = max(0, state["max_tool_calls"] - state.get("tool_call_count", 0))
@@ -96,7 +98,7 @@ return [
 
 后端类比是把一个批处理拆成多个带最小消息体的 worker job，然后在 barrier 汇合。复制完整证据历史会放大 checkpoint 和序列化成本。
 
-## 节点注册与普通边
+## `build_investigation_graph`：节点注册与普通边
 
 ```python
 builder = StateGraph(InvestigationState)

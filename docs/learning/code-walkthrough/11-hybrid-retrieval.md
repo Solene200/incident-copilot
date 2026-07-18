@@ -20,7 +20,7 @@ flowchart LR
     Dedupe --> Hits
 ```
 
-Retriever 不直接修改 Graph State。它返回 `RetrievalResult`，当前用于知识工具和 Evaluation；工具路径再把检索命中转换为 Evidence。
+`HybridRetriever` 不直接修改 Graph State。它返回 `RetrievalResult`，当前用于知识工具和 Evaluation；工具路径再把检索命中转换为 Evidence。
 
 ## `ingest`：先准备，后替换
 

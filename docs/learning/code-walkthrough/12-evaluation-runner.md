@@ -20,6 +20,8 @@ flowchart TD
     Raw --> Summary["summary.json + summary.md"]
 ```
 
+`OfflineEvaluationRunner` 负责下面的整条执行链；它不把标签暴露给 Graph。
+
 ## `run`：失败也进入分母
 
 ```python
@@ -110,7 +112,7 @@ root_recall = root_cause_term_recall(
 
 `_actual_tool_calls` 从所有 `completed_steps` 重建跨轮记录，而不是只看最后 plan。若改看 pending steps，会评估“计划调用”而不是真实执行。
 
-## 可选 LangSmith
+## `_tracing_context`：可选 LangSmith
 
 ```python
 if self._enable_langsmith:

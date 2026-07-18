@@ -19,7 +19,7 @@ class ToolDefinition(Generic[InputT]):
 
 `__post_init__` 校验名称、来源、timeout 和重试上限。删除这些边界可能注册无限超时或无限重试工具。
 
-## 注册与发现
+## `ToolRegistry` 注册与发现
 
 ```python
 if definition.name in self._tools:
