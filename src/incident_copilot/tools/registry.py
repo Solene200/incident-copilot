@@ -1,6 +1,6 @@
-"""Allow-listed tool registry with validation, timeout, retry, and telemetry.
+"""带有校验、超时、重试和遥测能力的工具白名单 Registry。
 
-中文教学说明: Registry 是 Graph 与 Provider 之间的统一安全边界。Graph 只能调用已注册
+Registry 是 Graph 与 Provider 之间的统一安全边界。Graph 只能调用已注册
 工具; Registry 在进入 Provider 前校验参数和预算, 在返回 Graph 前校验证据来源、服务、
 时间范围和数量。Provider 异常会被转换为稳定 ToolError, 不把厂商细节泄漏给编排层。
 """
@@ -47,9 +47,9 @@ ToolHandler = Callable[[InputT, QueryContext], Awaitable[Sequence[Evidence]]]
 
 @dataclass(frozen=True, slots=True)
 class ToolDefinition(Generic[InputT]):
-    """One allow-listed tool and the policy applied to its provider call.
+    """保存一个白名单工具及其 Provider 调用策略。
 
-    中文: 定义把工具名、Pydantic 输入、异步 handler、允许来源和执行策略绑定在一起。
+    定义把工具名、Pydantic 输入、异步 handler、允许来源和执行策略绑定在一起。
     Graph 计划只能引用这里存在的 name。
     """
 
@@ -72,9 +72,9 @@ class ToolDefinition(Generic[InputT]):
 
 
 class ToolRegistry:
-    """Execute only registered tools through one policy and error boundary.
+    """通过统一策略和错误边界执行已注册工具。
 
-    中文: Registry 不维护整个调查的共享计数; 调查级预算由 Graph State 负责。它只执行
+    Registry 不维护整个调查的共享计数;调查级预算由 Graph State 负责。它只执行
     当前调用的 remaining budget、deadline、单次 timeout 和有限 retry。
     """
 
@@ -86,13 +86,13 @@ class ToolRegistry:
 
     @property
     def tool_names(self) -> tuple[str, ...]:
-        """Return a stable discovery list without exposing provider instances."""
+        """返回稳定的工具发现列表,但不暴露 Provider 实例。"""
         return tuple(sorted(self._tools))
 
     def register(self, definition: ToolDefinition[InputT]) -> None:
-        """Register one definition and reject accidental name replacement.
+        """注册一个工具定义,并拒绝意外的同名替换。
 
-        中文: 禁止静默覆盖同名工具, 防止装配顺序意外改变实际 Provider。
+        禁止静默覆盖同名工具,防止装配顺序意外改变实际 Provider。
         """
         if definition.name in self._tools:
             raise ToolRegistrationError(f"tool already registered: {definition.name}")
@@ -105,9 +105,9 @@ class ToolRegistry:
         arguments: Mapping[str, object],
         context: QueryContext,
     ) -> ToolExecutionResult:
-        """Validate and execute a tool within budget, timeout, and retry limits.
+        """在预算、超时和重试限制内校验并执行工具。
 
-        中文执行顺序: allow-list → 调用预算 → Pydantic 参数 → deadline/timeout → Provider
+        执行顺序:白名单 → 调用预算 → Pydantic 参数 → deadline/timeout → Provider
         → Evidence 边界校验 → 结构化结果。只有 retryable 错误才会重试。
         """
         definition = self._tools.get(name)
@@ -117,7 +117,7 @@ class ToolRegistry:
             raise ToolBudgetExceededError("tool call budget exhausted")
 
         try:
-            # 中文: 外部或模型生成的 arguments 必须先收敛到具体工具 Schema。
+            # 外部或模型生成的 arguments 必须先收敛到具体工具 Schema。
             tool_input = definition.input_model.model_validate(arguments)
         except ValidationError as exc:
             raise ToolInvalidArgumentsError(f"invalid arguments for tool: {name}") from exc
@@ -140,7 +140,7 @@ class ToolRegistry:
                     operation=name,
                 )
             else:
-                # 中文: 单次 timeout 不能超过调用方传入的全局剩余 deadline。
+                # 单次 timeout 不能超过调用方传入的全局剩余 deadline。
                 attempt_timeout = min(definition.timeout_seconds, remaining_seconds)
                 try:
                     evidence = await asyncio.wait_for(
@@ -185,7 +185,7 @@ class ToolRegistry:
                     return result
 
             if failure.retryable and attempts < max_attempts:
-                # 中文: 退避也必须装得进剩余 deadline, 否则立即返回归一化失败。
+                # 退避也必须装得进剩余 deadline,否则立即返回归一化失败。
                 backoff = self._retry_backoff_seconds * (2 ** (attempts - 1))
                 remaining_seconds = (context.deadline - datetime.now(UTC)).total_seconds()
                 if backoff < remaining_seconds:

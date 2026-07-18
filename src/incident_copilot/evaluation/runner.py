@@ -1,6 +1,6 @@
-"""Offline evaluation orchestration and auditable artifact generation.
+"""离线 Evaluation 编排和可审计产物生成。
 
-中文教学说明: Runner 用版本化 Fixture、Fake Model 和本地 RAG 执行可复现回归评估。
+Runner 用版本化 Fixture、Fake Model 和本地 RAG 执行可复现回归评估。
 Ground truth 只在 Graph 完成后参与指标计算, 不进入 ModelContext、工具参数或检索过滤。
 每个样例都写入原始结果, 聚合报告不会隐藏失败样例或不可用指标。
 """
@@ -43,9 +43,9 @@ ROOT_CAUSE_ACCURACY_THRESHOLD = 0.75
 
 
 class OfflineEvaluationRunner:
-    """Run fixture/Fake-Model evaluation without exposing labels to the graph.
+    """运行 Fixture/Fake Model 评估,但不向 Graph 暴露标签。
 
-    中文: 该评估证明管线和指标计算可运行, 不证明生产泛化准确率。LangSmith tracing 默认
+    该评估证明管线和指标计算可运行,不证明生产泛化准确率。LangSmith tracing 默认
     关闭, 只有调用者显式启用时才允许外部发送 trace。
     """
 
@@ -54,9 +54,9 @@ class OfflineEvaluationRunner:
         self._project_name = project_name or "incident-copilot-offline-evaluation"
 
     async def run(self, dataset: EvaluationDataset, output_dir: Path) -> EvaluationSummary:
-        """Evaluate every sample, retain failures, and write raw plus aggregate artifacts.
+        """评估所有样例,保留失败结果并写入原始和聚合产物。
 
-        中文: 顺序执行全部样例并捕获单样例异常。无论成功或失败都会进入 raw JSONL 和
+        顺序执行全部样例并捕获单样例异常。无论成功或失败都会进入 raw JSONL 和
         summary 分母, 从而避免只报告成功样例造成的选择偏差。
         """
         started_at = datetime.now(UTC)
@@ -78,7 +78,7 @@ class OfflineEvaluationRunner:
                     )
                 results.append(result)
 
-        # 中文: 先落逐样例原始数据, 汇总指标始终可以回溯到具体输入和报告。
+        # 先落逐样例原始数据,汇总指标始终可以回溯到具体输入和报告。
         raw_path.write_text(
             "".join(
                 json.dumps(result.model_dump(mode="json"), ensure_ascii=False, sort_keys=True)
@@ -126,7 +126,7 @@ class OfflineEvaluationRunner:
         fixture_provider = FixtureProvider.from_path(resolve_fixture_path(sample.fixture_path))
         incident = fixture_provider.fixture.incident
 
-        # 中文: 检索 filter 来自事故输入, 不能读取 ground_truth.affected_services。
+        # 检索 filter 来自事故输入,不能读取 ground_truth.affected_services。
         retrieval = retriever.search(
             SearchQuery(
                 query=sample.retrieval_query,
@@ -160,7 +160,7 @@ class OfflineEvaluationRunner:
         )
         latency_ms = (perf_counter() - started) * 1_000
         report = state["final_report"]
-        # 中文: 从这里开始才读取 ground truth 计算质量指标; 上方 Graph 已完整结束。
+        # 从这里开始才读取 ground truth 计算质量指标;上方 Graph 已完整结束。
         actual_calls = self._actual_tool_calls(state)
         predicted_failure_type = classify_failure_type(report.root_cause)
         root_recall = root_cause_term_recall(
@@ -284,5 +284,5 @@ class OfflineEvaluationRunner:
 
 
 def dataset_tag(run_id: str) -> str:
-    """Create a stable, allow-listed trace tag from the generated run id."""
+    """根据运行 ID 创建稳定且符合白名单规则的 trace tag。"""
     return f"evaluation-run:{run_id}"
