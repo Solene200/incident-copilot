@@ -87,6 +87,7 @@
 | 2026-07-18 | 环境准备 | 安装并验证 Git、uv、WSL 2、Docker Desktop/CLI/Compose；未开始 Phase 1 |
 | 2026-07-18 | 2 | 完成离线 Fixture Provider、七工具、Registry、基准 payment-service 数据与失败测试 |
 | 2026-07-18 | 3 | 完成离线知识 ingest、Fake Embedding、BM25/向量/RRF、pgvector Adapter 与检索脚本 |
+| 2026-07-18 | 2/3 审查 | 独立审查并修复工具输出边界、CJK 切分、异步阻塞、向量版本隔离、ingest 原子性及运行时 DDL；99 项离线测试通过 |
 
 ## Phase 1 — 工程骨架和领域模型
 
@@ -186,7 +187,7 @@ uv run uvicorn incident_copilot.main:app --reload
 
 - 定义 Log、Metrics、Trace、Change、Topology、Knowledge 六个异步 Provider Protocol；知识端口分别支持 Runbook 与历史事故。
 - 定义七个严格 Pydantic 输入 Schema：服务名、timezone-aware 时间、24 小时窗口、limit、拓扑深度、指标/Trace/变更过滤和历史回看均有边界。
-- 实现 allow-list Tool Registry，提供重名/未知工具保护、参数校验、per-call deadline、单次 timeout、最多有限重试、指数退避、调用预算、输出来源校验、错误归一化和结构化遥测。
+- 实现 allow-list Tool Registry，提供重名/未知工具保护、参数校验、per-call deadline、单次 timeout、最多有限重试、指数退避、调用预算、输出来源及请求 service/time/limit 范围校验、错误归一化和结构化遥测。
 - 实现单一版本化 IncidentFixture 驱动的 FixtureProvider；所有过滤、排序和 limit 都是确定性的，空结果不会伪造证据。
 - 注册 `search_logs`、`query_metrics`、`query_traces`、`get_service_topology`、`get_recent_changes`、`search_runbooks`、`search_similar_incidents` 七个只读工具。
 - 建立 payment-service 连接池耗尽场景：12 条证据覆盖日志、指标、Trace、变更、拓扑和知识，并包含网关健康反证、健康检查/业务拒绝噪声。
@@ -207,9 +208,9 @@ uv run uvicorn incident_copilot.main:app --reload
 | `uv lock --check` | PASS：锁文件与项目元数据一致；Phase 2 未新增依赖 |
 | `uv run ruff format --check .` | PASS |
 | `uv run ruff check .` | PASS |
-| `uv run mypy src tests` | PASS：38 个 source files，0 issues |
-| `uv run pytest tests/unit/tools tests/integration/test_fixture_tools.py` | PASS：23 passed |
-| `uv run pytest` | PASS：66 passed |
+| `uv run mypy src tests` | PASS：54 个 source files，0 issues |
+| `uv run pytest tests/unit/tools tests/integration/test_fixture_tools.py` | PASS：27 passed，严格审查复检 0.23s |
+| `uv run pytest` | PASS：99 passed，严格审查复检 0.86s，0 warning |
 
 测试耗时只作为本机命令记录，不作为性能基准或 P95 声明。
 
@@ -255,13 +256,13 @@ uv run pytest
 ### 完成内容
 
 - 定义 `KnowledgeDocument`、`KnowledgeChunk`、`EmbeddedChunk`、metadata filter、查询、候选、命中和 ingest/result Schema；时间、URI、服务、环境、hash 和引用均严格校验。
-- 使用标准库 `tomllib` 加载 UTF-8 Markdown frontmatter，限制文件位于配置根目录内，拒绝坏 TOML、缺失 metadata 和重复 document ID。
-- 实现按 Markdown 标题边界切分的 Splitter；只在超长小节内使用有界 overlap，每个 Chunk 继承文档 metadata 并生成可解析 citation。
+- 使用标准库 `tomllib` 加载 UTF-8 Markdown frontmatter，限制文件位于配置根目录内，并在完整读取前执行文件大小上限检查；拒绝坏 TOML、缺失 metadata 和重复 document ID。
+- 实现按 Markdown 标题边界切分的 Splitter；只在超长小节内按同一 token 规则执行有界 overlap，包含无空格 CJK 文本时仍保证 Chunk 上限；每个 Chunk 继承文档 metadata 并生成可解析 citation。
 - 实现固定 64 维 signed-hash Fake Embedding，明确只用于确定性数据链路，不声明真实语义质量。
-- 实现 BM25、内存 cosine VectorStore、统一 metadata filter、稳定 tie-break、RRF 融合、content-hash 去重、top_k 和 citation 保留。
+- 实现 BM25、内存 cosine VectorStore、统一 metadata filter、稳定 tie-break、RRF 融合、content-hash 去重、top_k 和 citation 保留；向量按 embedding model/version 隔离并拒绝非有限值、零向量及非正相似度误命中。
 - 实现透明规则 Query Rewrite，覆盖 `db/postgresql/timeout/pool/checkout` 和 payment-service 场景中的中文别名，不调用 LLM。
-- 实现 `RagKnowledgeProvider`，保持 Phase 2 `KnowledgeProvider` 与两个工具的调用契约。
-- 实现 `PgVectorStore`：安全表名、维度校验、显式 `ensure_schema()`、参数化 SQL、JSONB payload 和 pgvector cosine 查询；默认无驱动/数据库依赖。
+- 实现 `RagKnowledgeProvider`，保持 Phase 2 `KnowledgeProvider` 与两个工具的调用契约；同步 BM25/向量/RRF 工作通过 worker thread 隔离，避免直接阻塞事件循环。
+- 实现 `PgVectorStore`：安全表名、维度/embedding 版本校验、事务式文档替换、参数化 SQL、JSONB payload 和 pgvector cosine 查询；Adapter 不执行运行时 DDL，schema 必须由 Alembic migration 预置，默认无驱动/数据库依赖。
 - 准备 2 个 Runbook、1 个服务说明和 1 个历史事故，共加载为 12 个 Chunk。
 - 提供 `scripts/ingest_knowledge.py` 和 `scripts/search_knowledge.py`；实际运行输出可审计 JSON，不写入伪造索引/评估文件。
 - 将 pytest `basetemp` 固定到仓库内已忽略的 `.pytest-tmp/`，避免 Windows 用户临时目录 ACL 导致 Loader 的真实临时文件测试无法运行；未跳过测试。
@@ -295,8 +296,8 @@ uv run pytest
 | `uv run ruff format --check .` | PASS：56 个 Python 文件已格式化 |
 | `uv run ruff check .` | PASS |
 | `uv run mypy src tests` | PASS：54 个 source files，0 issues |
-| `uv run pytest tests/unit/rag tests/integration/test_rag_pipeline.py` | PASS：21 passed |
-| `uv run pytest` | PASS：87 passed |
+| `uv run pytest tests/unit/rag tests/integration/test_rag_pipeline.py` | PASS：29 passed，严格审查复检 0.39s |
+| `uv run pytest` | PASS：99 passed，严格审查复检 0.86s，0 warning |
 | `uv run python scripts/ingest_knowledge.py` | PASS：4 documents、12 chunks、重复 ingest 计数一致 |
 | `uv run python scripts/search_knowledge.py --query "database connection pool timeout" --service payment-service --document-type runbook --top-k 2` | PASS：返回 2 条 Runbook Chunk，citation 可解析到源 Markdown |
 
@@ -313,9 +314,10 @@ uv run pytest
 
 ### 已知问题
 
-- Fake Embedding 是 signed-hash 词袋，不能代表真实语义 embedding；中文能力来自有限规则 rewrite。
-- 默认索引在内存中，每个进程重新 ingest；未实现持久化快照、增量文件监控或并发写协调。
-- `PgVectorStore` 的参数化 SQL contract 已用 recording session 验证，但当前机器没有可用 PostgreSQL/pgvector，因此未运行真实数据库集成测试。
+- Fake Embedding 是 signed-hash 词袋，不能代表真实语义 embedding；中文能力来自有限规则 rewrite，哈希碰撞仍可能让无关文本产生正相似度。
+- 默认索引在内存中，每个进程重新 ingest；未实现持久化快照、增量文件监控或并发 ingest/search 协调。
+- `PgVectorStore` 的参数化 SQL 和 transaction contract 已用 recording session 验证，但当前机器没有可用 PostgreSQL/pgvector，因此未运行真实数据库集成测试；真实部署还需要在持久化阶段提供 Alembic migration。
+- `RagKnowledgeProvider` 使用 `asyncio.to_thread` 避免事件循环被同步检索阻塞；调用方超时可以及时返回，但 Python worker thread 不能被强制取消，生产适配器仍需自身超时与资源边界。
 - Splitter 使用确定性近似 token 计数，不等同于未来模型 tokenizer；reranker 尚未实现且在 Phase 3 为可选项。
 - Hybrid `score` 是归一化 RRF 排序分数，不是概率或诊断置信度。
 - 未实现 LangGraph、模型推理、调查预算/循环或最终报告；这些属于 Phase 4。

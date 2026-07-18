@@ -20,7 +20,12 @@ from incident_copilot.tools.exceptions import (
 )
 from incident_copilot.tools.providers import FixtureProvider
 from incident_copilot.tools.registry import ToolDefinition, ToolRegistry
-from incident_copilot.tools.schemas import QueryContext, SearchLogsInput
+from incident_copilot.tools.schemas import (
+    GetServiceTopologyInput,
+    QueryContext,
+    SearchLogsInput,
+    SearchSimilarIncidentsInput,
+)
 
 
 def make_context(*, remaining_tool_calls: int = 3, expired: bool = False) -> QueryContext:
@@ -246,6 +251,113 @@ async def test_registry_rejects_evidence_without_required_provenance() -> None:
 
     assert captured.value.category is ProviderErrorCategory.MALFORMED_RESPONSE
     assert captured.value.attempts == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("violation", ["service", "time", "limit"])
+async def test_registry_rejects_provider_results_outside_request_scope(
+    violation: str,
+) -> None:
+    evidence = sample_log()
+    returned: tuple[Evidence, ...]
+    if violation == "service":
+        returned = (evidence.model_copy(update={"service": "payment-gateway"}),)
+    elif violation == "time":
+        returned = (
+            evidence.model_copy(update={"timestamp": datetime(2026, 7, 19, 10, 0, tzinfo=UTC)}),
+        )
+    else:
+        returned = (evidence, evidence)
+
+    async def handler(query: SearchLogsInput, context: QueryContext) -> Sequence[Evidence]:
+        del query, context
+        return returned
+
+    registry = ToolRegistry(retry_backoff_seconds=0)
+    registry.register(make_definition(handler))
+
+    with pytest.raises(ToolExecutionError) as captured:
+        await registry.execute(
+            "search_logs",
+            {**valid_arguments(), "limit": 1},
+            make_context(),
+        )
+
+    assert captured.value.category is ProviderErrorCategory.MALFORMED_RESPONSE
+    assert captured.value.attempts == 1
+
+
+@pytest.mark.asyncio
+async def test_registry_rejects_topology_and_incident_specific_time_scope() -> None:
+    fixture = FixtureProvider.payment_service().fixture.evidence
+    topology = next(item for item in fixture if item.source_type is SourceType.TOPOLOGY)
+    incident = next(
+        item
+        for item in fixture
+        if item.source_type is SourceType.KNOWLEDGE
+        and item.metadata.get("knowledge_kind") == "incident"
+    )
+
+    async def topology_handler(
+        query: GetServiceTopologyInput, context: QueryContext
+    ) -> Sequence[Evidence]:
+        del query, context
+        return (
+            topology.model_copy(update={"timestamp": datetime(2026, 7, 19, 10, 0, tzinfo=UTC)}),
+        )
+
+    async def incident_handler(
+        query: SearchSimilarIncidentsInput, context: QueryContext
+    ) -> Sequence[Evidence]:
+        del query, context
+        return (
+            incident.model_copy(update={"timestamp": datetime(2026, 7, 18, 10, 0, tzinfo=UTC)}),
+        )
+
+    topology_registry = ToolRegistry(retry_backoff_seconds=0)
+    topology_registry.register(
+        ToolDefinition(
+            name="get_service_topology",
+            input_model=GetServiceTopologyInput,
+            handler=topology_handler,
+            expected_sources=frozenset({SourceType.TOPOLOGY}),
+            max_retries=0,
+        )
+    )
+    incident_registry = ToolRegistry(retry_backoff_seconds=0)
+    incident_registry.register(
+        ToolDefinition(
+            name="search_similar_incidents",
+            input_model=SearchSimilarIncidentsInput,
+            handler=incident_handler,
+            expected_sources=frozenset({SourceType.KNOWLEDGE}),
+            max_retries=0,
+        )
+    )
+
+    with pytest.raises(ToolExecutionError) as topology_error:
+        await topology_registry.execute(
+            "get_service_topology",
+            {
+                "service": "payment-service",
+                "at_time": "2026-07-18T10:30:00+08:00",
+            },
+            make_context(),
+        )
+    with pytest.raises(ToolExecutionError) as incident_error:
+        await incident_registry.execute(
+            "search_similar_incidents",
+            {
+                "service": "payment-service",
+                "query": "connection pool incident",
+                "before_time": "2026-07-18T10:00:00+08:00",
+                "lookback_days": 90,
+            },
+            make_context(),
+        )
+
+    assert topology_error.value.category is ProviderErrorCategory.MALFORMED_RESPONSE
+    assert incident_error.value.category is ProviderErrorCategory.MALFORMED_RESPONSE
 
 
 @pytest.mark.asyncio

@@ -127,9 +127,9 @@
 
 - [x] 六个 Provider Protocol 与七个工具均通过统一 Registry 装配，FixtureProvider 同时满足全部端口。
 - [x] 七工具逐项测试固定 evidence ID，并验证来源、时间、服务和 citation；空结果与 limit 保持确定性。
-- [x] Registry 覆盖重名/未知工具、严格参数、预算、deadline、有限超时重试、临时/永久 Provider 失败和错误归一化。
+- [x] Registry 覆盖重名/未知工具、严格参数、预算、deadline、有限超时重试、临时/永久 Provider 失败、错误归一化，以及返回证据的 service/time/limit 请求边界。
 - [x] payment-service fixture 含 12 条脱敏证据、真实规范化 content SHA-256、支持/反证/噪声和隔离的 ground truth。
-- [x] `uv lock --check`、Ruff format/check、`mypy src tests`、23 项 Phase 2 测试与 66 项全量测试通过。
+- [x] `uv lock --check`、Ruff format/check、`mypy src tests`、27 项 Phase 2 测试与 99 项全量测试通过（含 Phase 2/3 严格审查加固测试）。
 - [x] 默认测试未访问网络、付费 API、数据库或真实可观测平台；未实现 RAG、LangGraph 或下一阶段占位业务代码。
 
 ## 6. Phase 3：RAG Indexing 和 Retrieval
@@ -165,10 +165,10 @@
 - [x] 文档/Chunk 使用规范化 SHA-256 与稳定 ID；重复 ingest 后仍为 4 documents / 12 chunks，检索结果一致。
 - [x] Fake Embedding、BM25、内存 VectorStore、RRF Hybrid Search、content-hash 去重、metadata filter、top_k、citation 和规则 Query Rewrite 均有固定测试。
 - [x] `RagKnowledgeProvider` 在不修改 Phase 2 工具名/Schema 的情况下接入 `search_runbooks` 与 `search_similar_incidents`。
-- [x] `PgVectorStore` 提供显式 schema、参数化 upsert/delete/search 和维度/表名边界；recording session contract 测试通过。当前环境无 PostgreSQL/pgvector，未把真实数据库集成标为通过。
+- [x] `PgVectorStore` 提供参数化 upsert/delete/search、事务式文档替换及维度/表名/embedding 版本边界；Adapter 不执行运行时 DDL，schema 由 Alembic migration 管理。recording session contract 测试通过；当前环境无 PostgreSQL/pgvector，未把真实数据库集成标为通过。
 - [x] 3 条手写 fixture 回归查询实际得到 Recall@3 `1.0`、MRR `7/9`；仅作为这 3 条固定样例的回归值，不代表泛化质量。
 - [x] 初始化与检索脚本真实运行成功，分别报告 4 documents / 12 chunks 和带原始 citation 的检索结果。
-- [x] `uv lock --check`、Ruff format/check、`mypy src tests`、21 项 Phase 3 测试与 87 项全量测试通过；默认路径未访问网络或在线模型/embedding。
+- [x] `uv lock --check`、Ruff format/check、`mypy src tests`、29 项 Phase 3 测试与 99 项全量测试通过；默认路径未访问网络或在线模型/embedding。严格审查补齐 CJK chunk 上限、文件预读上限、同步检索的事件循环隔离、失败 ingest 状态保留及 embedding 版本隔离。
 
 ## 7. Phase 4：LangGraph 调查工作流
 

@@ -1,6 +1,8 @@
 """Validated knowledge document, chunk, and retrieval value objects."""
 
 import hashlib
+import math
+import re
 from enum import StrEnum
 from typing import Self
 from urllib.parse import urlsplit
@@ -14,6 +16,8 @@ from incident_copilot.domain.common import (
     unique_non_empty,
 )
 from incident_copilot.domain.evidence import Citation
+
+SEARCH_TOKEN_PATTERN = re.compile(r"[A-Za-z0-9_.:/-]+|[\u4e00-\u9fff]")
 
 
 def normalize_document_text(value: str) -> str:
@@ -148,6 +152,14 @@ class EmbeddedChunk(DomainModel):
     embedding_model: str = Field(min_length=1, max_length=128)
     embedding_version: str = Field(min_length=1, max_length=64)
 
+    @model_validator(mode="after")
+    def validate_embedding(self) -> Self:
+        if any(not math.isfinite(value) for value in self.embedding):
+            raise ValueError("embedding values must be finite")
+        if not any(value != 0 for value in self.embedding):
+            raise ValueError("embedding must not be a zero vector")
+        return self
+
 
 class ScoredChunk(DomainModel):
     """Backend-local candidate before reciprocal-rank fusion."""
@@ -202,6 +214,13 @@ class SearchQuery(DomainModel):
     query: str = Field(min_length=2, max_length=512)
     top_k: int = Field(default=5, ge=1, le=50)
     metadata_filter: MetadataFilter = Field(default_factory=MetadataFilter)
+
+    @field_validator("query")
+    @classmethod
+    def validate_searchable_query(cls, value: str) -> str:
+        if SEARCH_TOKEN_PATTERN.search(value) is None:
+            raise ValueError("query must contain at least one searchable token")
+        return value
 
 
 class SearchHit(DomainModel):

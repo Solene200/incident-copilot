@@ -5,7 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from incident_copilot.rag.loader import KnowledgeLoadError, MarkdownDocumentLoader
+from incident_copilot.rag.loader import (
+    MAX_KNOWLEDGE_FILE_BYTES,
+    KnowledgeLoadError,
+    MarkdownDocumentLoader,
+)
 from incident_copilot.rag.schemas import (
     DocumentType,
     KnowledgeDocument,
@@ -102,6 +106,16 @@ def test_loader_rejects_duplicate_document_ids(tmp_path: Path) -> None:
         MarkdownDocumentLoader(tmp_path).load()
 
 
+def test_loader_rejects_oversized_document_before_reading_content(tmp_path: Path) -> None:
+    (tmp_path / "oversized.md").write_text(
+        "x" * (MAX_KNOWLEDGE_FILE_BYTES + 1),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(KnowledgeLoadError, match="size limit"):
+        MarkdownDocumentLoader(tmp_path).load()
+
+
 def test_splitter_preserves_heading_metadata_hash_and_citation() -> None:
     document = make_document(
         """# Symptoms
@@ -149,6 +163,16 @@ def test_splitter_is_deterministic_bounded_and_overlaps_only_within_section() ->
     next_tokens = set(tokenize(long_chunks[1].text))
     assert previous_tokens.intersection(next_tokens)
     assert "alpha" not in separate_chunks[0].text
+
+
+def test_splitter_enforces_token_bound_for_cjk_without_whitespace() -> None:
+    content = "# 长段落\n\n" + "数据库连接池超时" * 100
+    document = make_document(content)
+
+    chunks = MarkdownSplitter(max_tokens=20, overlap_tokens=2).split(document)
+
+    assert len(chunks) > 1
+    assert all(chunk.token_count <= 20 for chunk in chunks)
 
 
 def test_split_documents_orders_by_document_id() -> None:

@@ -1,10 +1,12 @@
 """Contract tests for in-memory and parameterized pgvector stores."""
 
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from incident_copilot.rag.embeddings import FakeEmbedding
 from incident_copilot.rag.loader import MarkdownDocumentLoader
@@ -38,6 +40,7 @@ class RecordingSession:
         self.executed: list[tuple[str, tuple[object, ...]]] = []
         self.fetched: list[tuple[str, tuple[object, ...]]] = []
         self.rows: list[Mapping[str, object]] = []
+        self.transaction_count = 0
 
     def execute(self, statement: str, parameters: Sequence[object] = ()) -> None:
         self.executed.append((statement, tuple(parameters)))
@@ -47,6 +50,11 @@ class RecordingSession:
     ) -> Sequence[Mapping[str, object]]:
         self.fetched.append((statement, tuple(parameters)))
         return self.rows
+
+    @contextmanager
+    def transaction(self) -> Iterator[None]:
+        self.transaction_count += 1
+        yield
 
 
 def test_in_memory_vector_store_upsert_search_filter_delete_and_dimension() -> None:
@@ -59,6 +67,8 @@ def test_in_memory_vector_store_upsert_search_filter_delete_and_dimension() -> N
     assert store.size == len(records)
     results = store.search(
         embedding.embed("database connection pool timeout"),
+        embedding_model=embedding.model_name,
+        embedding_version=embedding.version,
         top_k=5,
         metadata_filter=MetadataFilter(
             services=("payment-service",),
@@ -73,7 +83,49 @@ def test_in_memory_vector_store_upsert_search_filter_delete_and_dimension() -> N
     assert deleted > 0
     assert store.size == len(records) - deleted
     with pytest.raises(ValueError, match="dimension"):
-        store.search((1.0, 2.0), top_k=1, metadata_filter=MetadataFilter())
+        store.search(
+            (1.0, 2.0),
+            embedding_model=embedding.model_name,
+            embedding_version=embedding.version,
+            top_k=1,
+            metadata_filter=MetadataFilter(),
+        )
+
+
+def test_vector_store_rejects_invalid_vectors_atomically_and_filters_embedding_version() -> None:
+    record = embedded_records()[0]
+    store = InMemoryVectorStore(dimension=32)
+    invalid = record.model_copy(update={"embedding": (float("nan"),) * 32})
+
+    with pytest.raises(ValueError, match="finite"):
+        store.upsert((record, invalid))
+    assert store.size == 0
+
+    store.upsert((record,))
+    assert (
+        store.search(
+            record.embedding,
+            embedding_model=record.embedding_model,
+            embedding_version="different-version",
+            top_k=1,
+            metadata_filter=MetadataFilter(),
+        )
+        == ()
+    )
+
+
+@pytest.mark.parametrize(
+    "embedding",
+    [(0.0,) * 32, (float("inf"),) * 32],
+)
+def test_embedded_chunk_rejects_zero_or_non_finite_vector(
+    embedding: tuple[float, ...],
+) -> None:
+    payload = embedded_records()[0].model_dump()
+    payload["embedding"] = embedding
+
+    with pytest.raises(ValidationError, match=r"zero vector|finite"):
+        EmbeddedChunk.model_validate(payload)
 
 
 def test_pgvector_adapter_uses_explicit_schema_and_parameterized_queries() -> None:
@@ -81,9 +133,8 @@ def test_pgvector_adapter_uses_explicit_schema_and_parameterized_queries() -> No
     store = PgVectorStore(session, dimension=32, table="knowledge_chunks_test")
     record = embedded_records()[0]
 
-    store.ensure_schema()
     assert store.upsert((record,)) == 1
-    store.delete_documents((record.chunk.document_id,))
+    assert store.replace_documents((record.chunk.document_id,), (record,)) == 1
     session.rows = [
         {
             "payload": json.dumps(record.model_dump(mode="json")),
@@ -92,6 +143,8 @@ def test_pgvector_adapter_uses_explicit_schema_and_parameterized_queries() -> No
     ]
     results = store.search(
         record.embedding,
+        embedding_model=record.embedding_model,
+        embedding_version=record.embedding_version,
         top_k=3,
         metadata_filter=MetadataFilter(
             services=("payment-service",),
@@ -101,16 +154,19 @@ def test_pgvector_adapter_uses_explicit_schema_and_parameterized_queries() -> No
         ),
     )
 
-    assert "CREATE EXTENSION IF NOT EXISTS vector" in session.executed[0][0]
-    assert "VECTOR(32)" in session.executed[1][0]
-    insert_statement, insert_parameters = session.executed[2]
+    insert_statement, insert_parameters = session.executed[0]
     assert "ON CONFLICT (chunk_id) DO UPDATE" in insert_statement
+    assert "embedding_model" in insert_statement
+    assert "embedding_version" in insert_statement
     assert record.chunk.chunk_id in insert_parameters
     search_statement, search_parameters = session.fetched[0]
     assert "service_tags && %s::text[]" in search_statement
     assert "environment_tags && %s::text[]" in search_statement
     assert "document_type = ANY(%s::text[])" in search_statement
+    assert "embedding_model = %s" in search_statement
+    assert "embedding_version = %s" in search_statement
     assert search_parameters[-1] == 3
+    assert session.transaction_count == 1
     assert results[0].chunk == record.chunk
     assert results[0].score == 0.75
 
@@ -122,4 +178,10 @@ def test_pgvector_adapter_rejects_unsafe_table_and_wrong_dimension() -> None:
 
     store = PgVectorStore(session, dimension=32)
     with pytest.raises(ValueError, match="dimension"):
-        store.search((1.0,), top_k=1, metadata_filter=MetadataFilter())
+        store.search(
+            (1.0,),
+            embedding_model="test",
+            embedding_version="1",
+            top_k=1,
+            metadata_filter=MetadataFilter(),
+        )

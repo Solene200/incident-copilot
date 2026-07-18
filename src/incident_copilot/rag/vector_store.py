@@ -4,6 +4,7 @@ import json
 import math
 import re
 from collections.abc import Mapping, Sequence
+from contextlib import AbstractContextManager
 from typing import Protocol
 
 from incident_copilot.rag.schemas import (
@@ -25,10 +26,20 @@ class VectorStore(Protocol):
         """Insert or replace records by stable chunk ID."""
         ...
 
+    def replace_documents(
+        self,
+        document_ids: Sequence[str],
+        records: Sequence[EmbeddedChunk],
+    ) -> int:
+        """Atomically replace all vectors belonging to the supplied documents."""
+        ...
+
     def search(
         self,
         embedding: Sequence[float],
         *,
+        embedding_model: str,
+        embedding_version: str,
         top_k: int,
         metadata_filter: MetadataFilter,
     ) -> tuple[ScoredChunk, ...]:
@@ -59,27 +70,55 @@ class InMemoryVectorStore:
         return deleted
 
     def upsert(self, records: Sequence[EmbeddedChunk]) -> int:
-        for record in records:
-            self._validate_dimension(record.embedding)
-            self._records[record.chunk.chunk_id] = record
-        return len(records)
+        checked = tuple(records)
+        for record in checked:
+            self._validate_vector(record.embedding)
+        updated = dict(self._records)
+        for record in checked:
+            updated[record.chunk.chunk_id] = record
+        self._records = updated
+        return len(checked)
+
+    def replace_documents(
+        self,
+        document_ids: Sequence[str],
+        records: Sequence[EmbeddedChunk],
+    ) -> int:
+        checked = tuple(records)
+        for record in checked:
+            self._validate_vector(record.embedding)
+        targets = set(document_ids)
+        updated = {
+            chunk_id: record
+            for chunk_id, record in self._records.items()
+            if record.chunk.document_id not in targets
+        }
+        for record in checked:
+            updated[record.chunk.chunk_id] = record
+        self._records = updated
+        return len(checked)
 
     def search(
         self,
         embedding: Sequence[float],
         *,
+        embedding_model: str,
+        embedding_version: str,
         top_k: int,
         metadata_filter: MetadataFilter,
     ) -> tuple[ScoredChunk, ...]:
         if top_k < 1 or top_k > 200:
             raise ValueError("vector top_k must be between 1 and 200")
-        self._validate_dimension(embedding)
+        self._validate_vector(embedding)
         query_norm = math.sqrt(sum(value * value for value in embedding))
-        if query_norm == 0:
-            raise ValueError("query embedding must not be a zero vector")
 
         candidates: list[ScoredChunk] = []
         for record in self._records.values():
+            if (
+                record.embedding_model != embedding_model
+                or record.embedding_version != embedding_version
+            ):
+                continue
             if not chunk_matches_filter(record.chunk, metadata_filter):
                 continue
             record_norm = math.sqrt(sum(value * value for value in record.embedding))
@@ -87,16 +126,21 @@ class InMemoryVectorStore:
                 left * right for left, right in zip(embedding, record.embedding, strict=True)
             )
             cosine = dot_product / (query_norm * record_norm) if record_norm else 0.0
-            candidates.append(ScoredChunk(chunk=record.chunk, score=max(0.0, cosine)))
+            if cosine > 0:
+                candidates.append(ScoredChunk(chunk=record.chunk, score=cosine))
 
         candidates.sort(key=lambda item: (-item.score, item.chunk.chunk_id))
         return tuple(candidates[:top_k])
 
-    def _validate_dimension(self, embedding: Sequence[float]) -> None:
+    def _validate_vector(self, embedding: Sequence[float]) -> None:
         if len(embedding) != self._dimension:
             raise ValueError(
                 f"embedding dimension {len(embedding)} does not match {self._dimension}"
             )
+        if any(not math.isfinite(value) for value in embedding):
+            raise ValueError("embedding values must be finite")
+        if not any(value != 0 for value in embedding):
+            raise ValueError("embedding must not be a zero vector")
 
 
 class PgVectorSession(Protocol):
@@ -108,6 +152,10 @@ class PgVectorSession(Protocol):
 
     def execute(self, statement: str, parameters: Sequence[object] = ()) -> None:
         """Execute a parameterized statement."""
+        ...
+
+    def transaction(self) -> AbstractContextManager[None]:
+        """Return a transaction boundary that rolls back when an operation fails."""
         ...
 
     def fetch_all(
@@ -131,25 +179,6 @@ class PgVectorStore:
         self._dimension = dimension
         self._table = table
 
-    def ensure_schema(self) -> None:
-        """Explicitly install the extension/table when the caller has migration authority."""
-        self._session.execute("CREATE EXTENSION IF NOT EXISTS vector")
-        self._session.execute(
-            f"""
-            CREATE TABLE IF NOT EXISTS {self._table} (
-                chunk_id TEXT PRIMARY KEY,
-                document_id TEXT NOT NULL,
-                content_hash TEXT NOT NULL,
-                service_tags TEXT[] NOT NULL,
-                environment_tags TEXT[] NOT NULL,
-                document_type TEXT NOT NULL,
-                effective_at TIMESTAMPTZ NOT NULL,
-                payload JSONB NOT NULL,
-                embedding VECTOR({self._dimension}) NOT NULL
-            )
-            """.strip()
-        )
-
     def delete_documents(self, document_ids: Sequence[str]) -> int:
         if not document_ids:
             return 0
@@ -160,11 +189,15 @@ class PgVectorStore:
         return len(document_ids)
 
     def upsert(self, records: Sequence[EmbeddedChunk]) -> int:
+        checked = tuple(records)
+        for record in checked:
+            self._validate_vector(record.embedding)
         statement = f"""
             INSERT INTO {self._table} (
                 chunk_id, document_id, content_hash, service_tags, environment_tags,
-                document_type, effective_at, payload, embedding
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s::vector)
+                document_type, effective_at, embedding_model, embedding_version,
+                payload, embedding
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s::vector)
             ON CONFLICT (chunk_id) DO UPDATE SET
                 document_id = EXCLUDED.document_id,
                 content_hash = EXCLUDED.content_hash,
@@ -172,11 +205,12 @@ class PgVectorStore:
                 environment_tags = EXCLUDED.environment_tags,
                 document_type = EXCLUDED.document_type,
                 effective_at = EXCLUDED.effective_at,
+                embedding_model = EXCLUDED.embedding_model,
+                embedding_version = EXCLUDED.embedding_version,
                 payload = EXCLUDED.payload,
                 embedding = EXCLUDED.embedding
         """.strip()
-        for record in records:
-            self._validate_dimension(record.embedding)
+        for record in checked:
             chunk = record.chunk
             self._session.execute(
                 statement,
@@ -188,25 +222,38 @@ class PgVectorStore:
                     list(chunk.environment_tags),
                     chunk.document_type.value,
                     chunk.effective_at,
+                    record.embedding_model,
+                    record.embedding_version,
                     json.dumps(record.model_dump(mode="json"), separators=(",", ":")),
                     self._vector_literal(record.embedding),
                 ),
             )
-        return len(records)
+        return len(checked)
+
+    def replace_documents(
+        self,
+        document_ids: Sequence[str],
+        records: Sequence[EmbeddedChunk],
+    ) -> int:
+        with self._session.transaction():
+            self.delete_documents(document_ids)
+            return self.upsert(records)
 
     def search(
         self,
         embedding: Sequence[float],
         *,
+        embedding_model: str,
+        embedding_version: str,
         top_k: int,
         metadata_filter: MetadataFilter,
     ) -> tuple[ScoredChunk, ...]:
         if top_k < 1 or top_k > 200:
             raise ValueError("pgvector top_k must be between 1 and 200")
-        self._validate_dimension(embedding)
+        self._validate_vector(embedding)
         vector = self._vector_literal(embedding)
-        clauses: list[str] = []
-        filter_parameters: list[object] = []
+        clauses = ["embedding_model = %s", "embedding_version = %s"]
+        filter_parameters: list[object] = [embedding_model, embedding_version]
         if metadata_filter.services:
             clauses.append("service_tags && %s::text[]")
             filter_parameters.append(list(metadata_filter.services))
@@ -238,17 +285,31 @@ class PgVectorStore:
                 if isinstance(payload, str)
                 else EmbeddedChunk.model_validate(payload)
             )
+            if (
+                record.embedding_model != embedding_model
+                or record.embedding_version != embedding_version
+            ):
+                raise ValueError("pgvector row embedding identity does not match the query")
             score_value = row.get("score", 0.0)
-            if not isinstance(score_value, int | float):
+            if (
+                not isinstance(score_value, int | float)
+                or isinstance(score_value, bool)
+                or not math.isfinite(score_value)
+            ):
                 raise ValueError("pgvector score must be numeric")
-            candidates.append(ScoredChunk(chunk=record.chunk, score=max(0.0, score_value)))
+            if score_value > 0:
+                candidates.append(ScoredChunk(chunk=record.chunk, score=score_value))
         return tuple(candidates)
 
-    def _validate_dimension(self, embedding: Sequence[float]) -> None:
+    def _validate_vector(self, embedding: Sequence[float]) -> None:
         if len(embedding) != self._dimension:
             raise ValueError(
                 f"embedding dimension {len(embedding)} does not match {self._dimension}"
             )
+        if any(not math.isfinite(value) for value in embedding):
+            raise ValueError("embedding values must be finite")
+        if not any(value != 0 for value in embedding):
+            raise ValueError("embedding must not be a zero vector")
 
     @staticmethod
     def _vector_literal(embedding: Sequence[float]) -> str:

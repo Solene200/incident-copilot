@@ -5,7 +5,7 @@ import logging
 import re
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from time import perf_counter
 from typing import Generic, TypeVar, cast
 
@@ -23,7 +23,15 @@ from incident_copilot.tools.exceptions import (
     ToolNotFoundError,
     ToolRegistrationError,
 )
-from incident_copilot.tools.schemas import QueryContext, ToolExecutionResult, ToolInput
+from incident_copilot.tools.schemas import (
+    GetServiceTopologyInput,
+    QueryContext,
+    SearchRunbooksInput,
+    SearchSimilarIncidentsInput,
+    TimeRangeToolInput,
+    ToolExecutionResult,
+    ToolInput,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +122,7 @@ class ToolRegistry:
                         definition.handler(tool_input, context),
                         timeout=attempt_timeout,
                     )
-                    checked_evidence = self._validate_evidence(definition, evidence)
+                    checked_evidence = self._validate_evidence(definition, evidence, tool_input)
                 except TimeoutError as exc:
                     failure = ProviderTimeoutError(
                         "provider call timed out",
@@ -181,8 +189,23 @@ class ToolRegistry:
 
     @staticmethod
     def _validate_evidence(
-        definition: ToolDefinition[ToolInput], evidence: Sequence[Evidence]
+        definition: ToolDefinition[ToolInput],
+        evidence: Sequence[Evidence],
+        tool_input: ToolInput,
     ) -> tuple[Evidence, ...]:
+        bounded_inputs = (
+            TimeRangeToolInput,
+            GetServiceTopologyInput,
+            SearchRunbooksInput,
+            SearchSimilarIncidentsInput,
+        )
+        result_limit = tool_input.limit if isinstance(tool_input, bounded_inputs) else 50
+        if len(evidence) > result_limit:
+            raise ProviderMalformedResponseError(
+                "provider returned more evidence than requested",
+                provider_name="tool-registry",
+                operation=definition.name,
+            )
         checked: list[Evidence] = []
         for item in evidence:
             if not isinstance(item, Evidence):
@@ -197,9 +220,9 @@ class ToolRegistry:
                     provider_name=item.source_name,
                     operation=definition.name,
                 )
-            if item.service is None:
+            if item.service != tool_input.service:
                 raise ProviderMalformedResponseError(
-                    "provider evidence must identify a service",
+                    "provider evidence service is outside the requested scope",
                     provider_name=item.source_name,
                     operation=definition.name,
                 )
@@ -209,11 +232,43 @@ class ToolRegistry:
                     provider_name=item.source_name,
                     operation=definition.name,
                 )
+            if isinstance(tool_input, TimeRangeToolInput) and not ToolRegistry._overlaps_window(
+                item, tool_input.start_time, tool_input.end_time
+            ):
+                raise ProviderMalformedResponseError(
+                    "provider evidence is outside the requested time window",
+                    provider_name=item.source_name,
+                    operation=definition.name,
+                )
+            if isinstance(tool_input, GetServiceTopologyInput) and (
+                item.timestamp is None or item.timestamp > tool_input.at_time
+            ):
+                raise ProviderMalformedResponseError(
+                    "provider topology evidence is newer than the requested time",
+                    provider_name=item.source_name,
+                    operation=definition.name,
+                )
+            if isinstance(tool_input, SearchSimilarIncidentsInput):
+                earliest = tool_input.before_time - timedelta(days=tool_input.lookback_days)
+                if (
+                    item.timestamp is None
+                    or not earliest <= item.timestamp < tool_input.before_time
+                ):
+                    raise ProviderMalformedResponseError(
+                        "provider incident evidence is outside the requested lookback",
+                        provider_name=item.source_name,
+                        operation=definition.name,
+                    )
             checked.append(item)
-        if len(checked) > 50:
-            raise ProviderMalformedResponseError(
-                "provider returned more than 50 evidence items",
-                provider_name="tool-registry",
-                operation=definition.name,
-            )
         return tuple(checked)
+
+    @staticmethod
+    def _overlaps_window(item: Evidence, start_time: datetime, end_time: datetime) -> bool:
+        if item.timestamp is not None:
+            return start_time <= item.timestamp <= end_time
+        return (
+            item.start_time is not None
+            and item.end_time is not None
+            and item.start_time <= end_time
+            and item.end_time >= start_time
+        )

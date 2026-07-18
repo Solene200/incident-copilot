@@ -9,7 +9,7 @@ IncidentCopilot 是一个面向 AI 应用开发岗位面试与作品集展示的
 - Python 3.11–3.13
 - [uv](https://docs.astral.sh/uv/)
 
-Docker 不是 Phase 1 的运行前提。
+Docker 不是 Phase 2/3 离线运行与测试的前提。
 
 ## 快速开始
 
@@ -68,7 +68,7 @@ uv run python scripts/search_knowledge.py --query "database connection pool time
 uv run python scripts/search_knowledge.py --query "连接池超时" --service payment-service --document-type runbook
 ```
 
-Fake Embedding 只用于验证确定性管线，不代表在线 embedding 的语义质量。`PgVectorStore` 使用参数化 SQL 和显式 `ensure_schema()`，默认测试通过 recording session 验证契约；项目不会在启动时隐式建表，当前机器也未运行真实 PostgreSQL/pgvector 集成测试。
+Fake Embedding 只用于验证确定性管线，不代表在线 embedding 的语义质量。`PgVectorStore` 使用参数化 SQL、embedding 模型/版本隔离和事务式文档替换，默认测试通过 recording session 验证契约；Adapter 不在运行时建表，真实部署必须由 Alembic migration 预置 schema。当前机器未运行真实 PostgreSQL/pgvector 集成测试。
 
 检索结果中的 `score` 是归一化 RRF 排序分数，不是根因概率或置信度。
 

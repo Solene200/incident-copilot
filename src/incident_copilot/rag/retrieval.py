@@ -64,21 +64,7 @@ class HybridRetriever:
         if len(document_ids) != len(set(document_ids)):
             raise ValueError("ingest input contains duplicate document IDs")
 
-        for document_id in document_ids:
-            self._documents.pop(document_id, None)
-            for chunk_id in tuple(self._chunks):
-                if self._chunks[chunk_id].document_id == document_id:
-                    del self._chunks[chunk_id]
-        self._vector_store.delete_documents(document_ids)
-
         new_chunks = self._splitter.split_documents(tuple(documents))
-        for document in documents:
-            self._documents[document.document_id] = document
-        for chunk in new_chunks:
-            self._chunks[chunk.chunk_id] = chunk
-
-        all_chunks = tuple(sorted(self._chunks.values(), key=lambda item: item.chunk_id))
-        self._lexical_index.rebuild(all_chunks)
         embeddings = self._embedding.embed_many([chunk.text for chunk in new_chunks])
         embedded_records = tuple(
             EmbeddedChunk(
@@ -89,7 +75,23 @@ class HybridRetriever:
             )
             for chunk, vector in zip(new_chunks, embeddings, strict=True)
         )
-        self._vector_store.upsert(embedded_records)
+
+        updated_documents = dict(self._documents)
+        updated_chunks = {
+            chunk_id: chunk
+            for chunk_id, chunk in self._chunks.items()
+            if chunk.document_id not in document_ids
+        }
+        for document in documents:
+            updated_documents[document.document_id] = document
+        for chunk in new_chunks:
+            updated_chunks[chunk.chunk_id] = chunk
+
+        self._vector_store.replace_documents(document_ids, embedded_records)
+        all_chunks = tuple(sorted(updated_chunks.values(), key=lambda item: item.chunk_id))
+        self._lexical_index.rebuild(all_chunks)
+        self._documents = updated_documents
+        self._chunks = updated_chunks
         return IngestResult(
             input_document_count=len(documents),
             indexed_document_count=self.document_count,
@@ -109,6 +111,8 @@ class HybridRetriever:
         query_embedding = self._embedding.embed(rewritten)
         vector = self._vector_store.search(
             query_embedding,
+            embedding_model=self._embedding.model_name,
+            embedding_version=self._embedding.version,
             top_k=candidate_k,
             metadata_filter=request.metadata_filter,
         )

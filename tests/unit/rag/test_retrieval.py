@@ -1,15 +1,31 @@
 """Tests for query rewrite, idempotent ingest, RRF, dedupe, and RAG provider."""
 
+import asyncio
+import time
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
+from incident_copilot.rag.bm25 import BM25Index
 from incident_copilot.rag.bootstrap import build_fixture_retriever
+from incident_copilot.rag.embeddings import FakeEmbedding
 from incident_copilot.rag.loader import MarkdownDocumentLoader
 from incident_copilot.rag.provider import RagKnowledgeProvider
+from incident_copilot.rag.retrieval import HybridRetriever
 from incident_copilot.rag.rewrite import QueryRewriter
-from incident_copilot.rag.schemas import DocumentType, MetadataFilter, SearchQuery
+from incident_copilot.rag.schemas import (
+    DocumentType,
+    EmbeddedChunk,
+    MetadataFilter,
+    RetrievalResult,
+    SearchQuery,
+    content_sha256,
+)
+from incident_copilot.rag.splitter import MarkdownSplitter
+from incident_copilot.rag.vector_store import InMemoryVectorStore
 from incident_copilot.tools.schemas import (
     QueryContext,
     SearchRunbooksInput,
@@ -17,6 +33,21 @@ from incident_copilot.tools.schemas import (
 )
 
 FIXED_NOW = datetime(2026, 7, 18, 3, 0, tzinfo=UTC)
+
+
+class FailingReplaceStore(InMemoryVectorStore):
+    def __init__(self, *, dimension: int) -> None:
+        super().__init__(dimension=dimension)
+        self.fail_replace = False
+
+    def replace_documents(
+        self,
+        document_ids: Sequence[str],
+        records: Sequence[EmbeddedChunk],
+    ) -> int:
+        if self.fail_replace:
+            raise RuntimeError("simulated vector replacement failure")
+        return super().replace_documents(document_ids, records)
 
 
 def knowledge_root() -> Path:
@@ -35,6 +66,11 @@ def test_query_rewrite_is_transparent_deterministic_and_bilingual() -> None:
     assert "connection" in first
     assert "pool" in first
     assert "timeout" in first
+
+
+def test_search_query_rejects_text_without_searchable_tokens() -> None:
+    with pytest.raises(ValidationError, match="searchable token"):
+        SearchQuery(query="!!")
 
 
 def test_ingest_and_hybrid_search_are_idempotent_and_citation_preserving() -> None:
@@ -70,6 +106,37 @@ def test_ingest_and_hybrid_search_are_idempotent_and_citation_preserving() -> No
     assert all(hit.chunk.citation.uri.startswith("internal://knowledge/") for hit in first.hits)
     assert all(hit.matched_by for hit in first.hits)
     assert len(first.hits) <= 5
+
+
+def test_ingest_failure_preserves_previous_retriever_state() -> None:
+    embedding = FakeEmbedding(dimension=32)
+    store = FailingReplaceStore(dimension=embedding.dimension)
+    retriever = HybridRetriever(
+        splitter=MarkdownSplitter(),
+        embedding=embedding,
+        lexical_index=BM25Index(),
+        vector_store=store,
+        rewriter=QueryRewriter(),
+        clock=lambda: FIXED_NOW,
+    )
+    original = MarkdownDocumentLoader(knowledge_root()).load()[0]
+    retriever.ingest((original,))
+    before = retriever.search(SearchQuery(query="connection pool timeout", top_k=5))
+    replacement_content = "# Replacement\n\nrollback sentinel content"
+    replacement = original.model_copy(
+        update={
+            "content": replacement_content,
+            "content_hash": content_sha256(replacement_content),
+        }
+    )
+    store.fail_replace = True
+
+    with pytest.raises(RuntimeError, match="replacement failure"):
+        retriever.ingest((replacement,))
+
+    after = retriever.search(SearchQuery(query="connection pool timeout", top_k=5))
+    assert after == before
+    assert retriever.document_count == 1
 
 
 def test_hybrid_search_applies_metadata_filter_top_k_and_empty_result() -> None:
@@ -151,3 +218,36 @@ async def test_rag_provider_returns_tool_compatible_evidence() -> None:
     assert runbooks[0].service == "payment-service"
     assert incidents[0].metadata["document_type"] == "incident"
     assert incidents[0].citation.uri.startswith("internal://knowledge/incidents/")
+
+
+@pytest.mark.asyncio
+async def test_rag_provider_does_not_block_event_loop_during_sync_retrieval(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    retriever, _ = build_fixture_retriever(clock=lambda: FIXED_NOW)
+    original_search = retriever.search
+
+    def slow_search(request: SearchQuery) -> RetrievalResult:
+        time.sleep(0.05)
+        return original_search(request)
+
+    monkeypatch.setattr(retriever, "search", slow_search)
+    provider = RagKnowledgeProvider(retriever)
+    context = QueryContext(
+        correlation_id="rag-provider-timeout",
+        deadline=datetime(2026, 7, 18, 3, 1, tzinfo=UTC),
+        remaining_tool_calls=5,
+    )
+
+    with pytest.raises(TimeoutError):
+        await asyncio.wait_for(
+            provider.search_runbooks(
+                SearchRunbooksInput(
+                    service="payment-service",
+                    query="database connection pool timeout",
+                ),
+                context,
+            ),
+            timeout=0.005,
+        )
+    await asyncio.sleep(0.06)

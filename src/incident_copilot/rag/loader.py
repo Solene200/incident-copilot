@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from incident_copilot.rag.schemas import KnowledgeDocument, content_sha256
 
 FRONTMATTER_DELIMITER = "+++"
+MAX_KNOWLEDGE_FILE_BYTES = 1_000_000
 
 
 class KnowledgeLoadError(ValueError):
@@ -41,6 +42,8 @@ class MarkdownDocumentLoader:
 
     @staticmethod
     def _load_file(path: Path) -> KnowledgeDocument:
+        if path.stat().st_size > MAX_KNOWLEDGE_FILE_BYTES:
+            raise KnowledgeLoadError(f"knowledge document exceeds size limit: {path}")
         raw_text = path.read_text(encoding="utf-8")
         lines = raw_text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
         if not lines or lines[0].strip() != FRONTMATTER_DELIMITER:

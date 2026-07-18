@@ -5,19 +5,19 @@ from dataclasses import dataclass
 
 from incident_copilot.domain.evidence import Citation
 from incident_copilot.rag.schemas import (
+    SEARCH_TOKEN_PATTERN,
     KnowledgeChunk,
     KnowledgeDocument,
     content_sha256,
     normalize_document_text,
 )
 
-TOKEN_PATTERN = re.compile(r"[A-Za-z0-9_.:/-]+|[\u4e00-\u9fff]")
 HEADING_PATTERN = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 
 
 def tokenize(value: str) -> tuple[str, ...]:
     """Tokenize English identifiers and individual CJK characters deterministically."""
-    return tuple(match.group(0).casefold() for match in TOKEN_PATTERN.finditer(value))
+    return tuple(match.group(0).casefold() for match in SEARCH_TOKEN_PATTERN.finditer(value))
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,18 +122,22 @@ class MarkdownSplitter:
         if available < 5:
             raise ValueError("section path leaves no room for chunk content")
 
-        body_words = section.body.split()
-        if len(tokenize(section.body)) <= available:
+        body_tokens = tuple(SEARCH_TOKEN_PATTERN.finditer(section.body))
+        if len(body_tokens) <= available:
             return (normalize_document_text(f"{prefix}\n{section.body}"),)
 
         step = available - self._overlap_tokens
         chunks: list[str] = []
         start = 0
-        while start < len(body_words):
-            end = min(start + available, len(body_words))
-            body = " ".join(body_words[start:end])
+        while start < len(body_tokens):
+            end = min(start + available, len(body_tokens))
+            start_offset = 0 if start == 0 else body_tokens[start].start()
+            end_offset = (
+                len(section.body) if end == len(body_tokens) else body_tokens[end - 1].end()
+            )
+            body = section.body[start_offset:end_offset].strip()
             chunks.append(normalize_document_text(f"{prefix}\n{body}"))
-            if end == len(body_words):
+            if end == len(body_tokens):
                 break
             start += step
         return tuple(chunks)

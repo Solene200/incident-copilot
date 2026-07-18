@@ -1,5 +1,6 @@
 """Adapter exposing hybrid RAG through the Phase 2 KnowledgeProvider port."""
 
+import asyncio
 from collections.abc import Sequence
 from datetime import datetime, timedelta
 
@@ -24,16 +25,15 @@ class RagKnowledgeProvider:
         self, query: SearchRunbooksInput, context: QueryContext
     ) -> Sequence[Evidence]:
         del context
-        result = self._retriever.search(
-            SearchQuery(
-                query=query.query,
-                top_k=query.limit,
-                metadata_filter=MetadataFilter(
-                    services=(query.service,),
-                    document_types=(DocumentType.RUNBOOK,),
-                ),
-            )
+        request = SearchQuery(
+            query=query.query,
+            top_k=query.limit,
+            metadata_filter=MetadataFilter(
+                services=(query.service,),
+                document_types=(DocumentType.RUNBOOK,),
+            ),
         )
+        result = await asyncio.to_thread(self._retriever.search, request)
         return self._to_evidence(
             result.hits, service=query.service, collected_at=result.retrieved_at
         )
@@ -42,18 +42,17 @@ class RagKnowledgeProvider:
         self, query: SearchSimilarIncidentsInput, context: QueryContext
     ) -> Sequence[Evidence]:
         del context
-        result = self._retriever.search(
-            SearchQuery(
-                query=query.query,
-                top_k=query.limit,
-                metadata_filter=MetadataFilter(
-                    services=(query.service,),
-                    document_types=(DocumentType.INCIDENT,),
-                    effective_before=query.before_time,
-                    effective_after=query.before_time - timedelta(days=query.lookback_days),
-                ),
-            )
+        request = SearchQuery(
+            query=query.query,
+            top_k=query.limit,
+            metadata_filter=MetadataFilter(
+                services=(query.service,),
+                document_types=(DocumentType.INCIDENT,),
+                effective_before=query.before_time,
+                effective_after=query.before_time - timedelta(days=query.lookback_days),
+            ),
         )
+        result = await asyncio.to_thread(self._retriever.search, request)
         return self._to_evidence(
             result.hits, service=query.service, collected_at=result.retrieved_at
         )
