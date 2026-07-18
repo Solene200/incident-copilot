@@ -6,7 +6,12 @@ from urllib.parse import urlsplit
 
 from pydantic import Field, JsonValue, field_validator, model_validator
 
-from incident_copilot.domain.common import AwareDatetime, DomainModel, SourceType
+from incident_copilot.domain.common import (
+    AwareDatetime,
+    DomainModel,
+    SourceType,
+    normalize_optional_service,
+)
 
 
 class Citation(DomainModel):
@@ -25,7 +30,11 @@ class Citation(DomainModel):
         parsed = urlsplit(value)
         if parsed.scheme not in {"fixture", "internal", "http", "https"}:
             raise ValueError("citation uri must use fixture, internal, http, or https scheme")
-        if not parsed.netloc and not parsed.path:
+        if parsed.username is not None or parsed.password is not None:
+            raise ValueError("citation uri must not contain credentials")
+        if parsed.scheme in {"http", "https"} and parsed.hostname is None:
+            raise ValueError("http citation uri must contain a host")
+        if parsed.scheme in {"fixture", "internal"} and not parsed.netloc and not parsed.path:
             raise ValueError("citation uri must contain a source location")
         return value
 
@@ -53,7 +62,7 @@ class Evidence(DomainModel):
     @field_validator("service")
     @classmethod
     def normalize_service(cls, value: str | None) -> str | None:
-        return value.strip().lower() if value is not None else None
+        return normalize_optional_service(value)
 
     @model_validator(mode="after")
     def validate_time_range(self) -> Self:
@@ -84,6 +93,23 @@ class EvidenceRef(DomainModel):
     relevance_score: float = Field(ge=0.0, le=1.0)
     reliability_score: float = Field(ge=0.0, le=1.0)
     citation: Citation
+
+    @field_validator("service")
+    @classmethod
+    def normalize_service(cls, value: str | None) -> str | None:
+        return normalize_optional_service(value)
+
+    @model_validator(mode="after")
+    def validate_time_range(self) -> Self:
+        if (self.start_time is None) != (self.end_time is None):
+            raise ValueError("start_time and end_time must be provided together")
+        if (
+            self.start_time is not None
+            and self.end_time is not None
+            and self.start_time >= self.end_time
+        ):
+            raise ValueError("evidence reference start_time must be earlier than end_time")
+        return self
 
     @classmethod
     def from_evidence(cls, evidence: Evidence) -> Self:

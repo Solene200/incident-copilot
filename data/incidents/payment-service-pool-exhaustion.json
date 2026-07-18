@@ -1,0 +1,466 @@
+{
+  "schema_version": "1.0",
+  "name": "payment-service-pool-exhaustion",
+  "description": "Sanitized deterministic payment-service incident with supporting, contradicting, and noisy evidence.",
+  "contains_sensitive_data": false,
+  "incident": {
+    "incident_id": "inc_payment_20260718_001",
+    "raw_query": "payment-service error rate increased between 10:20 and 10:40 and some requests timed out",
+    "services": [
+      "payment-service"
+    ],
+    "start_time": "2026-07-18T10:20:00+08:00",
+    "end_time": "2026-07-18T10:40:00+08:00",
+    "symptoms": [
+      "elevated error rate",
+      "request timeouts"
+    ],
+    "severity": "sev2",
+    "environment": "production",
+    "created_at": "2026-07-18T10:42:00+08:00",
+    "timezone_assumption": null
+  },
+  "evidence": [
+    {
+      "evidence_id": "ev_payment_log_pool_timeout",
+      "source_type": "log",
+      "source_name": "fixture-logs",
+      "title": "Database connection acquisition timed out",
+      "content": {
+        "level": "ERROR",
+        "component": "payment-repository",
+        "error_code": "DB_POOL_ACQUIRE_TIMEOUT",
+        "message": "connection acquisition exceeded 5000 ms",
+        "request_sample": "synthetic-request-001"
+      },
+      "summary": "payment-service could not acquire a database connection within 5 seconds.",
+      "timestamp": "2026-07-18T10:23:12+08:00",
+      "start_time": null,
+      "end_time": null,
+      "service": "payment-service",
+      "relevance_score": 0.98,
+      "reliability_score": 0.96,
+      "metadata": {
+        "environment": "production",
+        "error_code": "DB_POOL_ACQUIRE_TIMEOUT"
+      },
+      "citation": {
+        "citation_id": "cit_payment_log_pool_timeout",
+        "uri": "fixture://incidents/payment-service-pool-exhaustion.json",
+        "locator": "evidence[0]",
+        "display_name": "payment-service application log",
+        "retrieved_at": "2026-07-18T10:43:00+08:00",
+        "content_hash": "18771ae2d359ede98ad909c34824a746a52e70e5fc9e99332ff837505aa0b319"
+      },
+      "content_hash": "18771ae2d359ede98ad909c34824a746a52e70e5fc9e99332ff837505aa0b319",
+      "collected_at": "2026-07-18T10:43:00+08:00"
+    },
+    {
+      "evidence_id": "ev_payment_log_checkout_timeout",
+      "source_type": "log",
+      "source_name": "fixture-logs",
+      "title": "Payment checkout request timed out",
+      "content": {
+        "level": "WARN",
+        "route": "POST /payments",
+        "duration_ms": 15008,
+        "outcome": "timeout"
+      },
+      "summary": "A payment request timed out after waiting on the repository path.",
+      "timestamp": "2026-07-18T10:27:41+08:00",
+      "start_time": null,
+      "end_time": null,
+      "service": "payment-service",
+      "relevance_score": 0.91,
+      "reliability_score": 0.93,
+      "metadata": {
+        "environment": "production",
+        "route": "POST /payments"
+      },
+      "citation": {
+        "citation_id": "cit_payment_log_checkout_timeout",
+        "uri": "fixture://incidents/payment-service-pool-exhaustion.json",
+        "locator": "evidence[1]",
+        "display_name": "payment-service request log",
+        "retrieved_at": "2026-07-18T10:43:00+08:00",
+        "content_hash": "2e455528e4a82927b78ac131b97079adbbfd313a68d29d2b145f234d888887ec"
+      },
+      "content_hash": "2e455528e4a82927b78ac131b97079adbbfd313a68d29d2b145f234d888887ec",
+      "collected_at": "2026-07-18T10:43:00+08:00"
+    },
+    {
+      "evidence_id": "ev_payment_log_noise_decline",
+      "source_type": "log",
+      "source_name": "fixture-logs",
+      "title": "Synthetic card validation declined",
+      "content": {
+        "level": "INFO",
+        "reason": "test-rule-decline",
+        "outcome": "declined",
+        "customer_data": "none"
+      },
+      "summary": "A synthetic validation decline occurred but did not time out and is unrelated noise.",
+      "timestamp": "2026-07-18T10:29:05+08:00",
+      "start_time": null,
+      "end_time": null,
+      "service": "payment-service",
+      "relevance_score": 0.2,
+      "reliability_score": 0.9,
+      "metadata": {
+        "environment": "production",
+        "fixture_noise": true
+      },
+      "citation": {
+        "citation_id": "cit_payment_log_noise_decline",
+        "uri": "fixture://incidents/payment-service-pool-exhaustion.json",
+        "locator": "evidence[2]",
+        "display_name": "payment-service noise log",
+        "retrieved_at": "2026-07-18T10:43:00+08:00",
+        "content_hash": "754f5eb80d433d8d129f9488b6769499e7cf8daf54ab6549b2499be6e5190958"
+      },
+      "content_hash": "754f5eb80d433d8d129f9488b6769499e7cf8daf54ab6549b2499be6e5190958",
+      "collected_at": "2026-07-18T10:43:00+08:00"
+    },
+    {
+      "evidence_id": "ev_payment_metric_error_rate",
+      "source_type": "metric",
+      "source_name": "fixture-metrics",
+      "title": "Payment HTTP error rate increased",
+      "content": {
+        "metric_name": "http.server.error_rate",
+        "aggregation": "rate",
+        "points": [
+          ["2026-07-18T10:20:00+08:00", 0.03],
+          ["2026-07-18T10:25:00+08:00", 0.31],
+          ["2026-07-18T10:35:00+08:00", 0.34],
+          ["2026-07-18T10:40:00+08:00", 0.29]
+        ]
+      },
+      "summary": "payment-service error rate rose from 3% to above 29% during the incident.",
+      "timestamp": null,
+      "start_time": "2026-07-18T10:20:00+08:00",
+      "end_time": "2026-07-18T10:40:00+08:00",
+      "service": "payment-service",
+      "relevance_score": 0.96,
+      "reliability_score": 0.98,
+      "metadata": {
+        "metric_name": "http.server.error_rate",
+        "aggregation": "rate",
+        "unit": "ratio"
+      },
+      "citation": {
+        "citation_id": "cit_payment_metric_error_rate",
+        "uri": "fixture://incidents/payment-service-pool-exhaustion.json",
+        "locator": "evidence[3].content.points",
+        "display_name": "payment-service error-rate metric",
+        "retrieved_at": "2026-07-18T10:43:00+08:00",
+        "content_hash": "c74a880276cc9c2f68970d97d438c820067413a969b52531304a48b9f008a00a"
+      },
+      "content_hash": "c74a880276cc9c2f68970d97d438c820067413a969b52531304a48b9f008a00a",
+      "collected_at": "2026-07-18T10:43:00+08:00"
+    },
+    {
+      "evidence_id": "ev_payment_metric_pool_saturation",
+      "source_type": "metric",
+      "source_name": "fixture-metrics",
+      "title": "Database connection pool remained saturated",
+      "content": {
+        "metric_name": "db.pool.utilization",
+        "aggregation": "max",
+        "configured_max": 5,
+        "active_connections": 5,
+        "pending_requests": 37
+      },
+      "summary": "All 5 configured database connections were active while 37 requests waited.",
+      "timestamp": null,
+      "start_time": "2026-07-18T10:21:00+08:00",
+      "end_time": "2026-07-18T10:39:00+08:00",
+      "service": "payment-service",
+      "relevance_score": 1.0,
+      "reliability_score": 0.99,
+      "metadata": {
+        "metric_name": "db.pool.utilization",
+        "aggregation": "max",
+        "unit": "ratio"
+      },
+      "citation": {
+        "citation_id": "cit_payment_metric_pool_saturation",
+        "uri": "fixture://incidents/payment-service-pool-exhaustion.json",
+        "locator": "evidence[4].content",
+        "display_name": "payment-service DB pool metric",
+        "retrieved_at": "2026-07-18T10:43:00+08:00",
+        "content_hash": "d270e84a655c7c3bdd1e5272629eae81c6e721032bf55502a9f1329ef372df8a"
+      },
+      "content_hash": "d270e84a655c7c3bdd1e5272629eae81c6e721032bf55502a9f1329ef372df8a",
+      "collected_at": "2026-07-18T10:43:00+08:00"
+    },
+    {
+      "evidence_id": "ev_gateway_metric_latency_healthy",
+      "source_type": "metric",
+      "source_name": "fixture-metrics",
+      "title": "External payment gateway latency remained healthy",
+      "content": {
+        "metric_name": "dependency.gateway.latency",
+        "aggregation": "p95",
+        "value_ms": 118,
+        "error_rate": 0.004
+      },
+      "summary": "The external gateway stayed near 118 ms p95 with a 0.4% error rate.",
+      "timestamp": null,
+      "start_time": "2026-07-18T10:20:00+08:00",
+      "end_time": "2026-07-18T10:40:00+08:00",
+      "service": "payment-gateway",
+      "relevance_score": 0.84,
+      "reliability_score": 0.97,
+      "metadata": {
+        "metric_name": "dependency.gateway.latency",
+        "aggregation": "p95",
+        "unit": "milliseconds",
+        "contradicts_gateway_root_cause": true
+      },
+      "citation": {
+        "citation_id": "cit_gateway_metric_latency_healthy",
+        "uri": "fixture://incidents/payment-service-pool-exhaustion.json",
+        "locator": "evidence[5].content",
+        "display_name": "payment-gateway health metric",
+        "retrieved_at": "2026-07-18T10:43:00+08:00",
+        "content_hash": "ef707e1bfe17eca04f0b2b6856e9af6d34700b0db444f53cc6158ffd16706e8a"
+      },
+      "content_hash": "ef707e1bfe17eca04f0b2b6856e9af6d34700b0db444f53cc6158ffd16706e8a",
+      "collected_at": "2026-07-18T10:43:00+08:00"
+    },
+    {
+      "evidence_id": "ev_payment_trace_db_wait",
+      "source_type": "trace",
+      "source_name": "fixture-traces",
+      "title": "Payment trace blocked on database pool acquisition",
+      "content": {
+        "trace_id": "trace_fixture_payment_001",
+        "duration_ms": 15124,
+        "spans": [
+          {"name": "POST /payments", "duration_ms": 15124, "status": "error"},
+          {"name": "db.pool.acquire", "duration_ms": 5002, "status": "timeout"},
+          {"name": "payment-gateway.authorize", "duration_ms": 121, "status": "ok"}
+        ]
+      },
+      "summary": "The critical path spent 5 seconds acquiring a DB connection; gateway authorization took 121 ms.",
+      "timestamp": "2026-07-18T10:25:33+08:00",
+      "start_time": null,
+      "end_time": null,
+      "service": "payment-service",
+      "relevance_score": 1.0,
+      "reliability_score": 0.98,
+      "metadata": {
+        "operation": "POST /payments",
+        "status": "timeout",
+        "trace_id": "trace_fixture_payment_001"
+      },
+      "citation": {
+        "citation_id": "cit_payment_trace_db_wait",
+        "uri": "fixture://incidents/payment-service-pool-exhaustion.json",
+        "locator": "evidence[6].content.spans[1]",
+        "display_name": "payment-service timeout trace",
+        "retrieved_at": "2026-07-18T10:43:00+08:00",
+        "content_hash": "e7b5992a04e89d1ff7661a304100466a2a03ad893c347d6b75205b8e8218b2e9"
+      },
+      "content_hash": "e7b5992a04e89d1ff7661a304100466a2a03ad893c347d6b75205b8e8218b2e9",
+      "collected_at": "2026-07-18T10:43:00+08:00"
+    },
+    {
+      "evidence_id": "ev_payment_trace_health_check",
+      "source_type": "trace",
+      "source_name": "fixture-traces",
+      "title": "Health check trace completed normally",
+      "content": {
+        "trace_id": "trace_fixture_health_001",
+        "duration_ms": 7,
+        "spans": [
+          {"name": "GET /health", "duration_ms": 7, "status": "ok"}
+        ]
+      },
+      "summary": "The lightweight health endpoint remained available and does not exercise the DB pool.",
+      "timestamp": "2026-07-18T10:31:00+08:00",
+      "start_time": null,
+      "end_time": null,
+      "service": "payment-service",
+      "relevance_score": 0.35,
+      "reliability_score": 0.95,
+      "metadata": {
+        "operation": "GET /health",
+        "status": "ok",
+        "fixture_noise": true
+      },
+      "citation": {
+        "citation_id": "cit_payment_trace_health_check",
+        "uri": "fixture://incidents/payment-service-pool-exhaustion.json",
+        "locator": "evidence[7]",
+        "display_name": "payment-service health trace",
+        "retrieved_at": "2026-07-18T10:43:00+08:00",
+        "content_hash": "dd424222949899d10789fb31a20e8f73520b521f6f29496713ab639b5a3ae3fa"
+      },
+      "content_hash": "dd424222949899d10789fb31a20e8f73520b521f6f29496713ab639b5a3ae3fa",
+      "collected_at": "2026-07-18T10:43:00+08:00"
+    },
+    {
+      "evidence_id": "ev_payment_change_pool_limit",
+      "source_type": "change",
+      "source_name": "fixture-changes",
+      "title": "payment-service release reduced DB pool maximum",
+      "content": {
+        "release": "payment-service-2026.07.18.2",
+        "commit": "fixture9f31a2",
+        "configuration_diff": {
+          "db.pool.max_connections": {"before": 50, "after": 5}
+        },
+        "actor": "sanitized-ci"
+      },
+      "summary": "A release 3 minutes before the incident changed db.pool.max_connections from 50 to 5.",
+      "timestamp": "2026-07-18T10:17:00+08:00",
+      "start_time": null,
+      "end_time": null,
+      "service": "payment-service",
+      "relevance_score": 1.0,
+      "reliability_score": 0.99,
+      "metadata": {
+        "change_type": "configuration",
+        "release": "payment-service-2026.07.18.2"
+      },
+      "citation": {
+        "citation_id": "cit_payment_change_pool_limit",
+        "uri": "fixture://incidents/payment-service-pool-exhaustion.json",
+        "locator": "evidence[8].content.configuration_diff",
+        "display_name": "payment-service release change",
+        "retrieved_at": "2026-07-18T10:43:00+08:00",
+        "content_hash": "650a0416abcae38cfa92f163c8391736e4280b78f289c09339e788acde60f57a"
+      },
+      "content_hash": "650a0416abcae38cfa92f163c8391736e4280b78f289c09339e788acde60f57a",
+      "collected_at": "2026-07-18T10:43:00+08:00"
+    },
+    {
+      "evidence_id": "ev_payment_topology_dependencies",
+      "source_type": "topology",
+      "source_name": "fixture-topology",
+      "title": "payment-service direct dependency topology",
+      "content": {
+        "service": "payment-service",
+        "dependencies": [
+          {"service": "postgres-primary", "protocol": "postgres", "critical": true},
+          {"service": "payment-gateway", "protocol": "https", "critical": true}
+        ]
+      },
+      "summary": "payment-service directly depends on postgres-primary and payment-gateway.",
+      "timestamp": "2026-07-18T10:20:00+08:00",
+      "start_time": null,
+      "end_time": null,
+      "service": "payment-service",
+      "relevance_score": 0.9,
+      "reliability_score": 0.96,
+      "metadata": {
+        "depth": 1,
+        "snapshot": "production-2026-07-18T10:20:00+08:00"
+      },
+      "citation": {
+        "citation_id": "cit_payment_topology_dependencies",
+        "uri": "fixture://incidents/payment-service-pool-exhaustion.json",
+        "locator": "evidence[9].content.dependencies",
+        "display_name": "production service topology snapshot",
+        "retrieved_at": "2026-07-18T10:43:00+08:00",
+        "content_hash": "1be6c39a81f35880a90b186bb1ad8667051a53f072bf44428b49ef4c76c9f6dd"
+      },
+      "content_hash": "1be6c39a81f35880a90b186bb1ad8667051a53f072bf44428b49ef4c76c9f6dd",
+      "collected_at": "2026-07-18T10:43:00+08:00"
+    },
+    {
+      "evidence_id": "ev_payment_runbook_pool_timeout",
+      "source_type": "knowledge",
+      "source_name": "fixture-knowledge",
+      "title": "Runbook: database connection pool acquisition timeout",
+      "content": {
+        "document_id": "runbook_payment_db_pool_v3",
+        "version": "3.0",
+        "steps": [
+          "Compare active and configured maximum connections",
+          "Check recent db.pool.max_connections changes",
+          "Verify dependency latency before attributing the outage",
+          "Require human approval before rollback"
+        ]
+      },
+      "summary": "The runbook links acquisition timeouts to pool saturation and recent connection-limit changes.",
+      "timestamp": "2026-06-01T09:00:00+08:00",
+      "start_time": null,
+      "end_time": null,
+      "service": "payment-service",
+      "relevance_score": 0.94,
+      "reliability_score": 0.9,
+      "metadata": {
+        "knowledge_kind": "runbook",
+        "document_id": "runbook_payment_db_pool_v3",
+        "version": "3.0"
+      },
+      "citation": {
+        "citation_id": "cit_payment_runbook_pool_timeout",
+        "uri": "fixture://incidents/payment-service-pool-exhaustion.json",
+        "locator": "evidence[10].content.steps",
+        "display_name": "payment-service DB pool runbook",
+        "retrieved_at": "2026-07-18T10:43:00+08:00",
+        "content_hash": "3bb0ea63a66bada7094a8f1fb48367623219c3de015236a3ae0cf7df472d83e0"
+      },
+      "content_hash": "3bb0ea63a66bada7094a8f1fb48367623219c3de015236a3ae0cf7df472d83e0",
+      "collected_at": "2026-07-18T10:43:00+08:00"
+    },
+    {
+      "evidence_id": "ev_payment_incident_similar_pool",
+      "source_type": "knowledge",
+      "source_name": "fixture-knowledge",
+      "title": "Historical incident: checkout connection pool timeout",
+      "content": {
+        "incident_reference": "historical-fixture-2026-06-28",
+        "symptoms": ["connection pool timeout", "elevated checkout errors"],
+        "root_cause": "connection limit was lower than the validated production baseline",
+        "resolution": "restore validated limit after human review"
+      },
+      "summary": "A prior payment-service incident had the same connection pool timeout signature after a limit reduction.",
+      "timestamp": "2026-06-28T14:30:00+08:00",
+      "start_time": null,
+      "end_time": null,
+      "service": "payment-service",
+      "relevance_score": 0.89,
+      "reliability_score": 0.86,
+      "metadata": {
+        "knowledge_kind": "incident",
+        "incident_reference": "historical-fixture-2026-06-28"
+      },
+      "citation": {
+        "citation_id": "cit_payment_incident_similar_pool",
+        "uri": "fixture://incidents/payment-service-pool-exhaustion.json",
+        "locator": "evidence[11].content",
+        "display_name": "historical payment-service incident",
+        "retrieved_at": "2026-07-18T10:43:00+08:00",
+        "content_hash": "387d0d6809fead14499b6366cb8a72d8235c0ea02655b8b1c6e6c42bd9abecd8"
+      },
+      "content_hash": "387d0d6809fead14499b6366cb8a72d8235c0ea02655b8b1c6e6c42bd9abecd8",
+      "collected_at": "2026-07-18T10:43:00+08:00"
+    }
+  ],
+  "ground_truth": {
+    "root_cause": "Release payment-service-2026.07.18.2 reduced db.pool.max_connections from 50 to 5, saturating the pool and causing connection acquisition timeouts.",
+    "affected_services": [
+      "payment-service"
+    ],
+    "expected_evidence_ids": [
+      "ev_payment_log_pool_timeout",
+      "ev_payment_metric_pool_saturation",
+      "ev_payment_trace_db_wait",
+      "ev_payment_change_pool_limit",
+      "ev_payment_topology_dependencies",
+      "ev_payment_runbook_pool_timeout",
+      "ev_payment_incident_similar_pool"
+    ]
+  },
+  "tags": [
+    "payment-service",
+    "pool-exhaustion",
+    "provider-fixture",
+    "sanitized"
+  ]
+}

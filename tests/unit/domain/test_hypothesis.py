@@ -1,5 +1,7 @@
 """Tests for hypothesis evidence relationships."""
 
+from typing import Any
+
 import pytest
 from pydantic import ValidationError
 
@@ -32,8 +34,11 @@ def make_hypothesis(**overrides: object) -> Hypothesis:
 def test_hypothesis_normalizes_services_and_query_sources() -> None:
     hypothesis = make_hypothesis()
 
-    assert hypothesis.affected_services == ["payment-service"]
-    assert hypothesis.verification_queries[0].source_types == [SourceType.CHANGE, SourceType.LOG]
+    assert hypothesis.affected_services == ("payment-service",)
+    assert hypothesis.verification_queries[0].source_types == (
+        SourceType.CHANGE,
+        SourceType.LOG,
+    )
 
 
 def test_hypothesis_rejects_evidence_overlap() -> None:
@@ -41,6 +46,22 @@ def test_hypothesis_rejects_evidence_overlap() -> None:
         make_hypothesis(contradicting_evidence_ids=["ev_log_001"])
 
 
+def test_hypothesis_rejects_malformed_evidence_id() -> None:
+    with pytest.raises(ValidationError, match="valid evidence ids"):
+        make_hypothesis(supporting_evidence_ids=["ev_"])
+
+
 def test_supported_hypothesis_requires_supporting_evidence() -> None:
     with pytest.raises(ValidationError, match="requires supporting evidence"):
         make_hypothesis(status=HypothesisStatus.SUPPORTED, supporting_evidence_ids=[])
+
+
+def test_hypothesis_invariants_cannot_be_bypassed_by_mutation() -> None:
+    hypothesis = make_hypothesis(status=HypothesisStatus.SUPPORTED)
+    mutable_view: Any = hypothesis.supporting_evidence_ids
+    frozen_view: Any = hypothesis
+
+    with pytest.raises(AttributeError):
+        mutable_view.clear()
+    with pytest.raises(ValidationError, match="frozen"):
+        frozen_view.status = HypothesisStatus.REJECTED

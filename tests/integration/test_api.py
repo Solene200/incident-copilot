@@ -45,6 +45,28 @@ def test_application_exception_uses_stable_error_envelope() -> None:
     }
 
 
+def test_application_exception_redacts_accidental_secrets() -> None:
+    app = create_app(Settings(environment=RuntimeEnvironment.TEST, _env_file=None))
+
+    @app.get("/_test/sensitive-domain-error")
+    async def raise_sensitive_domain_error() -> None:
+        raise DomainValidationError(
+            "invalid token=secret-value",
+            details={"api_key": "another-secret", "input_tokens": 3},
+        )
+
+    with TestClient(app) as client:
+        response = client.get("/_test/sensitive-domain-error")
+
+    assert response.status_code == 400
+    assert "secret-value" not in response.text
+    assert "another-secret" not in response.text
+    assert response.json()["error"]["details"] == {
+        "api_key": "***REDACTED***",
+        "input_tokens": 3,
+    }
+
+
 def test_request_validation_does_not_echo_input() -> None:
     app = create_app(Settings(environment=RuntimeEnvironment.TEST, _env_file=None))
 

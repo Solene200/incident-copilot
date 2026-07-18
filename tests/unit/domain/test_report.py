@@ -1,6 +1,7 @@
 """Tests for report consistency and measured investigation statistics."""
 
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import pytest
 from pydantic import ValidationError
@@ -64,6 +65,9 @@ def test_report_accepts_consistent_measured_values() -> None:
 
     assert report.schema_version == "1.0"
     assert report.investigation_stats.duration_ms == 1_000
+    assert report.model_dump(mode="json")["investigation_stats"]["evidence_count_by_source"] == {
+        "log": 1
+    }
 
 
 def test_report_rejects_unsorted_timeline() -> None:
@@ -88,3 +92,31 @@ def test_report_requires_root_cause_for_probable_disposition() -> None:
 def test_stats_reject_invented_token_total() -> None:
     with pytest.raises(ValidationError, match="total_tokens"):
         make_stats(input_tokens=2, output_tokens=3, total_tokens=99)
+
+
+def test_stats_reject_negative_evidence_count() -> None:
+    with pytest.raises(ValidationError, match="non-negative"):
+        make_stats(evidence_count_by_source={SourceType.LOG: -1})
+
+
+def test_stats_evidence_counts_cannot_be_mutated_after_validation() -> None:
+    stats = make_stats()
+    mutable_view: Any = stats.evidence_count_by_source
+
+    with pytest.raises(TypeError):
+        mutable_view[SourceType.LOG] = -1
+
+
+@pytest.mark.parametrize(
+    ("completed_at", "duration_ms"),
+    [
+        (None, 1_000),
+        (datetime(2026, 7, 18, 2, 21, tzinfo=UTC), None),
+    ],
+)
+def test_stats_requires_completion_time_and_duration_together(
+    completed_at: datetime | None,
+    duration_ms: int | None,
+) -> None:
+    with pytest.raises(ValidationError, match="provided together"):
+        make_stats(completed_at=completed_at, duration_ms=duration_ms)

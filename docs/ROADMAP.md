@@ -14,7 +14,7 @@
 | --- | --- | --- | --- |
 | 0 | 需求、架构和规范 | completed | 可评审的产品/架构/Graph/数据模型蓝图 |
 | 1 | 工程骨架和领域模型 | completed | FastAPI `/health` + 领域模型测试 |
-| 2 | Fixture Provider 和工具层 | not_started | 七类本地工具返回结构化证据 |
+| 2 | Fixture Provider 和工具层 | completed | 七类本地工具返回结构化证据 |
 | 3 | RAG Indexing 和 Retrieval | not_started | 可复现 Hybrid Search 与引用 |
 | 4 | LangGraph 调查工作流 | not_started | 完整有界调查循环与报告 |
 | 5 | API、Streaming、Checkpoint、HITL | not_started | 可创建、观察、恢复和审核调查 |
@@ -90,7 +90,7 @@
 - [x] `uv sync` 和 `uv lock --check` 成功，锁文件解析 37 个包。
 - [x] Ruff format/check 全部通过。
 - [x] `mypy src` 与 `mypy src tests` 全部通过。
-- [x] Phase 1 相关测试与全量测试均为 29 passed、0 failed、0 warning。
+- [x] 严格审查并补齐领域不变量、引用解析、统计一致性和脱敏边界后，全量测试为 43 passed、0 failed、0 warning。
 - [x] 独立 Uvicorn 进程启动后，真实 HTTP `/health` 请求返回 200 和预期 JSON。
 - [x] 默认导入、启动与测试不需要 API Key、Docker、数据库或网络服务。
 - [x] 未实现 Provider、RAG、LangGraph、持久化或其它 Phase 2+ 功能。
@@ -122,6 +122,15 @@
 - 七类工具均有独立单测与固定输出快照/结构断言。
 - 默认测试无网络；Ruff、mypy、相关 pytest 通过。
 - fixture ground truth 与噪声设计在文档中可审阅。
+
+### 实际验收
+
+- [x] 六个 Provider Protocol 与七个工具均通过统一 Registry 装配，FixtureProvider 同时满足全部端口。
+- [x] 七工具逐项测试固定 evidence ID，并验证来源、时间、服务和 citation；空结果与 limit 保持确定性。
+- [x] Registry 覆盖重名/未知工具、严格参数、预算、deadline、有限超时重试、临时/永久 Provider 失败和错误归一化。
+- [x] payment-service fixture 含 12 条脱敏证据、真实规范化 content SHA-256、支持/反证/噪声和隔离的 ground truth。
+- [x] `uv lock --check`、Ruff format/check、`mypy src tests`、23 项 Phase 2 测试与 66 项全量测试通过。
+- [x] 默认测试未访问网络、付费 API、数据库或真实可观测平台；未实现 RAG、LangGraph 或下一阶段占位业务代码。
 
 ## 6. Phase 3：RAG Indexing 和 Retrieval
 

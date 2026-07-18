@@ -1,8 +1,8 @@
 # IncidentCopilot
 
-IncidentCopilot 是一个面向 AI 应用开发岗位面试与作品集展示的多源可观测性故障诊断项目。当前仓库已完成 Phase 1：可运行的 FastAPI 工程骨架、严格领域模型、配置、JSON 日志、统一异常、Fixture Schema 与基础测试。
+IncidentCopilot 是一个面向 AI 应用开发岗位面试与作品集展示的多源可观测性故障诊断项目。当前仓库已完成 Phase 2：在 Phase 1 工程和领域模型之上，提供离线 Fixture Provider、Provider Protocol、七个只读调查工具和统一 Tool Registry。
 
-当前阶段不包含 LangGraph 调查流程、RAG、Provider、数据库或真实模型调用。
+当前阶段不包含 LangGraph 调查流程、RAG、数据库、真实可观测平台或模型调用。
 
 ## 环境要求
 
@@ -27,6 +27,20 @@ http://127.0.0.1:8000/docs
 
 `/health` 不访问数据库、网络或任何付费 API。
 
+## Phase 2 工具
+
+默认 payment-service fixture 位于 `data/incidents/payment-service-pool-exhaustion.json`，包含内部一致的日志、指标、Trace、变更、拓扑、Runbook、历史事故以及 evaluation-only ground truth。可用工具为：
+
+- `search_logs`
+- `query_metrics`
+- `query_traces`
+- `get_service_topology`
+- `get_recent_changes`
+- `search_runbooks`
+- `search_similar_incidents`
+
+工具输入使用严格 Pydantic Schema；Registry 统一处理 allow-list、deadline、timeout、有限重试、调用预算、错误归一化和结构化日志。所有 fixture 工具测试均离线运行。Phase 3 才会把知识工具接到 Hybrid Search/RAG。
+
 ## 质量检查
 
 ```text
@@ -50,4 +64,3 @@ uv run pytest
 - [数据模型](docs/DATA_MODEL.md)
 - [路线图](docs/ROADMAP.md)
 - [进度](docs/PROGRESS.md)
-

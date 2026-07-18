@@ -11,9 +11,25 @@ from typing import Any, Final
 from incident_copilot.core.config import LogLevel
 
 REDACTED: Final = "***REDACTED***"
-_SENSITIVE_KEYS: Final = ("api_key", "apikey", "authorization", "password", "secret", "token")
+_SENSITIVE_KEYS: Final = frozenset(
+    {
+        "api_key",
+        "apikey",
+        "authorization",
+        "client_secret",
+        "password",
+        "secret",
+        "token",
+    }
+)
 _KEY_VALUE_PATTERN: Final = re.compile(
-    r"(?i)\b(api[_-]?key|password|secret|token)\s*([=:])\s*([^\s,;]+)"
+    r"(?i)([\"']?(?:api[_-]?key|client[_-]?secret|password|secret|"
+    r"(?:access|auth|bearer|id|refresh|session)?[_-]?token)[\"']?\s*[=:]\s*[\"']?)"
+    r"([^\s,;}\"']+)"
+)
+_AUTHORIZATION_PATTERN: Final = re.compile(
+    r"(?i)([\"']?authorization[\"']?\s*[=:]\s*[\"']?)"
+    r"(?:(?:basic|bearer)\s+)?[^\s,;}\"']+"
 )
 _BEARER_PATTERN: Final = re.compile(r"(?i)(bearer\s+)[a-z0-9._~+/=-]+")
 _STANDARD_LOG_RECORD_FIELDS: Final = frozenset(logging.makeLogRecord({}).__dict__)
@@ -21,13 +37,21 @@ _STANDARD_LOG_RECORD_FIELDS: Final = frozenset(logging.makeLogRecord({}).__dict_
 
 def redact_text(value: str) -> str:
     """Redact common inline credential formats from a string."""
+    value = _AUTHORIZATION_PATTERN.sub(rf"\1{REDACTED}", value)
     value = _BEARER_PATTERN.sub(rf"\1{REDACTED}", value)
-    return _KEY_VALUE_PATTERN.sub(rf"\1\2{REDACTED}", value)
+    return _KEY_VALUE_PATTERN.sub(rf"\1{REDACTED}", value)
+
+
+def _is_sensitive_key(key: str) -> bool:
+    normalized = key.casefold().replace("-", "_")
+    return normalized in _SENSITIVE_KEYS or normalized.endswith(
+        ("_api_key", "_authorization", "_password", "_secret", "_token")
+    )
 
 
 def redact_value(value: Any, *, key: str | None = None) -> Any:
     """Recursively redact values whose keys or contents look sensitive."""
-    if key is not None and any(fragment in key.casefold() for fragment in _SENSITIVE_KEYS):
+    if key is not None and _is_sensitive_key(key):
         return REDACTED
     if isinstance(value, str):
         return redact_text(value)

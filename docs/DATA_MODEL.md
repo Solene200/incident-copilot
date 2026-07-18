@@ -24,6 +24,8 @@
 
 内部值固定英文；API 可在展示层本地化。未知值显式建模，避免用空字符串混淆“未提供”。
 
+Phase 1 的 Python 领域模型是冻结值对象：外部 JSON array 仍按本文的 `list[...]` 契约输入和输出，但模型内部使用 tuple 保存需要维持集合不变量的序列；调查统计的来源计数使用只读 Mapping，并在 JSON 序列化时保持 object 结构。该冻结是浅层冻结，`Evidence.content` 与 `metadata` 这类原始 JSON 载荷的深层不可变策略留给 Evidence Store 阶段处理。
+
 ## 3. IncidentContext
 
 | 字段 | 类型 | 规则 |
@@ -225,4 +227,3 @@ erDiagram
 - Pydantic 模型变化需提供向后兼容读取或显式迁移；数据库变化只经 Alembic。
 - Evaluation 数据集固定版本与预期真相，模型或 Prompt 变更不修改旧 ground truth 来“提高”分数。
 - Phase 1 只实现当前阶段需要的领域字段；持久化和 Graph 专用模型在对应 Phase 渐进加入。
-

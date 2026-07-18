@@ -11,6 +11,7 @@ from starlette.responses import JSONResponse
 
 from incident_copilot.api.schemas import ErrorDetail, ErrorResponse
 from incident_copilot.core.exceptions import IncidentCopilotError
+from incident_copilot.core.logging import redact_text, redact_value
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +27,8 @@ async def handle_application_error(request: Request, exc: Exception) -> JSONResp
     response = ErrorResponse(
         error=ErrorDetail(
             code=exc.code.value,
-            message=exc.message,
-            details=exc.details,
+            message=redact_text(exc.message),
+            details=cast(dict[str, JsonValue], redact_value(exc.details)),
         ),
         request_id=_request_id(request),
     )

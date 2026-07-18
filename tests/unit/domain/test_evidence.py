@@ -55,6 +55,15 @@ def test_evidence_builds_bounded_reference() -> None:
     assert "content_hash" not in reference.model_dump()
 
 
+def test_evidence_reference_normalizes_service() -> None:
+    payload = EvidenceRef.from_evidence(make_evidence()).model_dump()
+    payload["service"] = "PAYMENT-SERVICE"
+
+    reference = EvidenceRef.model_validate(payload)
+
+    assert reference.service == "payment-service"
+
+
 @pytest.mark.parametrize("field", ["relevance_score", "reliability_score"])
 def test_evidence_rejects_scores_outside_unit_interval(field: str) -> None:
     with pytest.raises(ValidationError):
@@ -69,3 +78,33 @@ def test_evidence_rejects_mismatched_citation_hash() -> None:
 def test_citation_rejects_unsafe_scheme() -> None:
     with pytest.raises(ValidationError, match="scheme"):
         make_citation(uri="file:///private/path")
+
+
+@pytest.mark.parametrize(
+    "uri",
+    ["https:///missing-host", "https://user:password@example.com/source"],
+)
+def test_citation_rejects_unresolvable_or_sensitive_http_uri(uri: str) -> None:
+    with pytest.raises(ValidationError, match=r"host|credentials"):
+        make_citation(uri=uri)
+
+
+@pytest.mark.parametrize(
+    ("start_time", "end_time"),
+    [
+        (datetime(2026, 7, 18, 2, 20, tzinfo=UTC), None),
+        (
+            datetime(2026, 7, 18, 2, 40, tzinfo=UTC),
+            datetime(2026, 7, 18, 2, 20, tzinfo=UTC),
+        ),
+    ],
+)
+def test_evidence_reference_rejects_invalid_time_window(
+    start_time: datetime,
+    end_time: datetime | None,
+) -> None:
+    payload = EvidenceRef.from_evidence(make_evidence()).model_dump()
+    payload.update({"start_time": start_time, "end_time": end_time})
+
+    with pytest.raises(ValidationError, match=r"provided together|earlier"):
+        EvidenceRef.model_validate(payload)

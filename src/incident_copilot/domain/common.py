@@ -1,5 +1,7 @@
 """Shared domain types and validation helpers."""
 
+import re
+from collections.abc import Sequence
 from datetime import datetime
 from enum import StrEnum
 from typing import Annotated
@@ -22,7 +24,7 @@ class DomainModel(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
-        validate_assignment=True,
+        frozen=True,
         str_strip_whitespace=True,
     )
 
@@ -84,7 +86,7 @@ class RiskLevel(StrEnum):
     CRITICAL = "critical"
 
 
-def normalize_services(values: list[str]) -> list[str]:
+def normalize_services(values: Sequence[str]) -> tuple[str, ...]:
     """Normalize, validate, and de-duplicate service names in input order."""
     normalized: list[str] = []
     seen: set[str] = set()
@@ -99,10 +101,17 @@ def normalize_services(values: list[str]) -> list[str]:
         if value not in seen:
             seen.add(value)
             normalized.append(value)
-    return normalized
+    return tuple(normalized)
 
 
-def unique_non_empty(values: list[str], *, field_name: str) -> list[str]:
+def normalize_optional_service(value: str | None) -> str | None:
+    """Normalize one optional service name with the shared service-name contract."""
+    if value is None:
+        return None
+    return normalize_services((value,))[0]
+
+
+def unique_non_empty(values: Sequence[str], *, field_name: str) -> tuple[str, ...]:
     """Strip and de-duplicate bounded string collections."""
     result: list[str] = []
     seen: set[str] = set()
@@ -113,4 +122,13 @@ def unique_non_empty(values: list[str], *, field_name: str) -> list[str]:
         if value not in seen:
             seen.add(value)
             result.append(value)
+    return tuple(result)
+
+
+def unique_evidence_ids(values: Sequence[str], *, field_name: str) -> tuple[str, ...]:
+    """Validate and de-duplicate references to evidence domain objects."""
+    result = unique_non_empty(values, field_name=field_name)
+    for value in result:
+        if re.fullmatch(r"ev_[A-Za-z0-9][A-Za-z0-9_-]{0,127}", value) is None:
+            raise ValueError(f"{field_name} must contain valid evidence ids")
     return result

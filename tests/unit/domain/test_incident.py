@@ -26,8 +26,8 @@ def make_incident(**overrides: object) -> IncidentContext:
 def test_incident_normalizes_and_deduplicates_values() -> None:
     incident = make_incident()
 
-    assert incident.services == ["payment-service"]
-    assert incident.symptoms == ["timeouts"]
+    assert incident.services == ("payment-service",)
+    assert incident.symptoms == ("timeouts",)
 
 
 def test_incident_rejects_naive_datetime() -> None:
