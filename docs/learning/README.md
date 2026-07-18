@@ -2,6 +2,14 @@
 
 这套文档面向已经理解 LangGraph 基本概念、但还不熟悉完整 AI 后端工程的读者。文档解释的是当前仓库真实实现, 不是理想化架构。
 
+建议直接阅读合并后的完整文档：[IncidentCopilot 中文教学版完整文档](INCIDENT_COPILOT_LEARNING_GUIDE.md)。
+
+当前目录中的分章文件是完整文档的维护源。修改分章后执行：
+
+```text
+uv run python scripts/build_learning_guide.py
+```
+
 实现基线为 `26f6130`。阶段三只新增教学文档; 从该提交到教学文档提交之间没有源码、Graph 或测试变更。
 
 ## 推荐入口
