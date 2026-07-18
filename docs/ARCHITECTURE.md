@@ -16,21 +16,25 @@ flowchart LR
     User["用户 / 演示 UI"] --> API["FastAPI API"]
     API --> Service["Investigation Service"]
     Service --> Graph["LangGraph 调查工作流"]
-    Graph --> Model["ModelProvider\nFake / Remote / Local"]
+    Graph --> Model["ModelProvider\n当前：Fake"]
     Graph --> Registry["Tool Registry"]
-    Registry --> ObsPorts["Observability Provider Protocols"]
-    ObsPorts --> Fixture["Fixture Providers"]
-    ObsPorts --> Real["Prometheus / Loki / Tempo Adapter"]
+    Registry --> MetricPort["MetricsProvider"]
+    Registry --> OtherPorts["Log / Trace / Change / Topology Ports"]
+    MetricPort --> PromAdapter["Prometheus HTTP Adapter"]
+    OtherPorts --> Fixture["Sanitized Fixture Providers"]
     Graph --> Retriever["Knowledge Retriever"]
     Retriever --> BM25["BM25 Index"]
     Retriever --> Vector["Vector Store Port"]
-    Vector --> PGV["PostgreSQL + pgvector"]
+    Vector --> InMemory["当前：In-memory Fake Vector"]
+    Vector -. "可选 Adapter" .-> PGV["PostgreSQL + pgvector"]
     Graph --> Checkpoint["LangGraph Checkpointer"]
     Service --> Repo["Investigation Repository"]
-    Repo --> DB["PostgreSQL"]
+    Repo --> MemoryRepo["当前：In-memory"]
+    Checkpoint --> Saver["Memory / PostgreSQL Saver"]
     API --> Stream["SSE Event Stream"]
-    Graph -. "structured telemetry" .-> Telemetry["Logs / Metrics / Traces"]
-    Registry -. "structured telemetry" .-> Telemetry
+    Emitter["OTel Demo Metric Emitter"] -->|"OTLP/HTTP"| Collector["OpenTelemetry Collector"]
+    Collector -->|"Prometheus exporter"| Prometheus["Prometheus"]
+    Prometheus --> PromAdapter
 ```
 
 ### 2.1 组件职责
@@ -81,6 +85,22 @@ flowchart LR
 
 所有 Provider 统一接受 `QueryContext`，包含 correlation ID、调用 deadline 和剩余预算；统一抛出可分类异常：`InvalidQuery`、`Unavailable`、`Timeout`、`RateLimited`、`MalformedResponse`。
 
+### 4.1 Phase 7 已实现的真实 Metrics 路径
+
+```text
+OTel SDK demo emitter
+  → OTLP/HTTP receiver
+  → OpenTelemetry Collector prometheus exporter
+  → Prometheus scrape + /api/v1/query_range
+  → PrometheusMetricsProvider
+  → query_metrics
+  → EvidenceRef / IncidentReport citation
+```
+
+`PrometheusMetricsProvider` 只接受现有 `QueryMetricsInput`。领域指标经固定 mapping 生成 PromQL，调用方不能传入任意表达式；Adapter 限制 HTTP timeout、响应字节、序列数量和每序列样本数，并拒绝非有限数值。HTTP 400/422、429、超时、不可用和畸形响应被转换为统一 Provider 异常。
+
+当前混合运行模式只替换 metrics 端口。日志、Trace、变更和拓扑继续使用 Fixture，知识查询继续使用 Phase 3 RAG。显式选择 Prometheus 后发生失败时，Graph 记录 coverage gap 并继续其他分支，不会暗中返回 Fixture metrics。
+
 ## 5. RAG 架构
 
 ### 5.1 写入链路
@@ -100,10 +120,10 @@ Phase 3 默认使用确定性 Fake Embedding 和内存向量/BM25 实现；pgvec
 | 模式 | Provider | Model | Vector/DB | 用途 |
 | --- | --- | --- | --- | --- |
 | `fixture`（默认） | 本地 JSON/JSONL | Fake Model | 内存/本地测试实现 | 单测、演示、CI |
-| `docker` | Fixture 或真实 | Fake 或远端 | PostgreSQL + pgvector、Redis | 集成测试、完整演示 |
-| `external` | 真实 Adapter | 配置选择 | 外部 PostgreSQL/Redis | Phase 7 扩展示例 |
+| `docker` | Prometheus metrics + 其余 Fixture | Fake Model | PostgreSQL checkpoint + 内存 RAG | 集成演示、HITL |
+| `external` | 可配置 Prometheus endpoint | Fake Model | 外部 PostgreSQL saver | 受限 Adapter 示例 |
 
-PostgreSQL 保存事故、证据元数据、报告、知识块和向量；LangGraph checkpointer 保存执行快照。Redis 只用于短期事件分发/缓存或任务协调，不作为事实唯一来源。若 Phase 5 的并发需求不需要 Redis，允许将其保留为可选基础设施，以减少 MVP 运维面。
+当前 PostgreSQL 只由 LangGraph checkpointer 使用。事故任务元数据、幂等键和 SSE 历史仍由 `InMemoryInvestigationRepository` 保存；pgvector Adapter 存在但默认 RAG 没有切到 PostgreSQL。Redis、持久化 Investigation/Event Repository 和外部 Evidence Store 尚未实现。
 
 ## 7. 可靠性、预算与降级
 
@@ -214,4 +234,3 @@ incident-copilot/
 ## 12. 架构决策记录候选
 
 后续遇到以下变化时应新增轻量 ADR，而不是悄悄改设计：Graph State/子图共享策略、checkpointer 后端、Redis 是否成为必需、真实 Provider 首选、默认模型策略、向量维度或融合算法变更。
-
