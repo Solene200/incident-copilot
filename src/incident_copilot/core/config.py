@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     debug: bool = False
     log_level: LogLevel = LogLevel.INFO
     api_prefix: str = "/api"
+    sse_heartbeat_seconds: float = Field(default=15.0, gt=0, le=60)
     model_api_key: SecretStr | None = Field(default=None, repr=False)
 
     @field_validator("api_prefix")
