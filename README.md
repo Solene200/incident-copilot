@@ -1,15 +1,15 @@
 # IncidentCopilot
 
-IncidentCopilot 是一个面向 AI 应用开发岗位面试与作品集展示的多源可观测性故障诊断项目。当前仓库已完成 Phase 3：在 Provider/工具层之上，提供离线知识加载、切分、确定性 Fake Embedding、BM25、内存向量检索、pgvector Adapter 和 RRF Hybrid Search。
+IncidentCopilot 是一个面向 AI 应用开发岗位面试与作品集展示的多源可观测性故障诊断项目。当前仓库已完成 Phase 4：在 Provider、工具和 RAG 之上，提供有界、可复现的 LangGraph 并行调查循环与带 Evidence ID 引用的最终报告。
 
-当前阶段不包含 LangGraph 调查流程、数据库部署、真实可观测平台或模型调用。
+当前阶段不包含调查 HTTP API、SSE、checkpoint、人工审核、数据库部署、真实可观测平台或在线模型调用；这些不应从现有 `/health` API 推断为已实现。
 
 ## 环境要求
 
 - Python 3.11–3.13
 - [uv](https://docs.astral.sh/uv/)
 
-Docker 不是 Phase 2/3 离线运行与测试的前提。
+Docker 不是 Phase 2–4 离线运行与测试的前提。
 
 ## 快速开始
 
@@ -72,6 +72,24 @@ Fake Embedding 只用于验证确定性管线，不代表在线 embedding 的语
 
 检索结果中的 `score` 是归一化 RRF 排序分数，不是根因概率或置信度。
 
+## Phase 4 LangGraph 调查
+
+运行完整 payment-service 离线调查：
+
+```text
+uv run python scripts/run_investigation.py
+```
+
+默认装配使用 Fixture Provider、Phase 3 Hybrid RAG 和 Fake Model，不需要 API Key 或网络。Graph 通过动态 `Send` 并行收集证据，使用稳定 ID reducer 汇合；研究轮数、并发、工具调用、模型调用、估算 Token 和 deadline 均有代码预算。结构化模型输出经 Pydantic 校验，连续无效时有限重试并转入明确规则降级。
+
+当前源码图位于 [docs/GRAPH_CURRENT.md](docs/GRAPH_CURRENT.md)。检查文档是否与编译图一致：
+
+```text
+uv run python scripts/render_graph.py --check docs/GRAPH_CURRENT.md
+```
+
+Fake Model 只验证控制流、结构化边界和可复现演示，不代表真实模型诊断准确率；报告 disposition、confidence 和估算 Token 也不是 Evaluation 结果。
+
 ## 质量检查
 
 ```text
@@ -92,6 +110,7 @@ uv run pytest
 - [产品需求](docs/PRD.md)
 - [总体架构](docs/ARCHITECTURE.md)
 - [Graph 设计](docs/GRAPH_DESIGN.md)
+- [当前源码 Graph](docs/GRAPH_CURRENT.md)
 - [数据模型](docs/DATA_MODEL.md)
 - [路线图](docs/ROADMAP.md)
 - [进度](docs/PROGRESS.md)

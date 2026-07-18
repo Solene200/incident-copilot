@@ -4,8 +4,8 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 当前已完成阶段 | Phase 3 |
-| 下一阶段 | Phase 4（等待用户明确确认） |
+| 当前已完成阶段 | Phase 4 |
+| 下一阶段 | Phase 5（等待用户明确确认） |
 | 最近更新 | 2026-07-18 |
 | 仓库初始状态 | 空目录，无 `.git` 元数据 |
 | 当前运行环境 | Windows / PowerShell；Python 3.13 可用 |
@@ -88,6 +88,7 @@
 | 2026-07-18 | 2 | 完成离线 Fixture Provider、七工具、Registry、基准 payment-service 数据与失败测试 |
 | 2026-07-18 | 3 | 完成离线知识 ingest、Fake Embedding、BM25/向量/RRF、pgvector Adapter 与检索脚本 |
 | 2026-07-18 | 2/3 审查 | 独立审查并修复工具输出边界、CJK 切分、异步阻塞、向量版本隔离、ingest 原子性及运行时 DDL；99 项离线测试通过 |
+| 2026-07-18 | 4 | 完成 LangGraph Send 并行调查、有界研究循环、结构化 Fake Model、降级报告和源码 Mermaid；121 项离线测试通过 |
 
 ## Phase 1 — 工程骨架和领域模型
 
@@ -341,3 +342,89 @@ uv run pytest tests/unit/rag tests/integration/test_rag_pipeline.py
 2. 保持 Phase 2 工具和 Phase 3 RAG 契约及全部质量门禁通过。
 3. 先使用 Fixture Provider、RagKnowledgeProvider 和可复现 Fake Model 实现有界 LangGraph 调查循环。
 4. 不提前实现 Phase 5 的 HTTP 调查生命周期、SSE、checkpoint 后端或 HITL API。
+
+## Phase 4 — LangGraph 调查工作流
+
+### 状态
+
+`completed`
+
+### 开始前基线
+
+- 完整重读 `AGENTS.md`、PRD、架构、Graph、数据模型、路线图和进度文档。
+- 审计发现 `HEAD 9597b83` 之上有 14 个未提交的 Phase 2/3 严格审查加固文件；先核对 diff 并跑完整门禁，确认 `99 passed` 后以 `a62f932` 独立提交推送，没有混入 Phase 4。
+- 干净基线为 `a62f932`，`main` 跟踪 `origin/main`；Ruff、mypy 和 99 项全量测试通过。
+
+### 完成内容
+
+- 新增并由 uv 锁定 LangGraph 1.2.9；当前锁文件解析 61 个包。LangGraph 许可证为 MIT，默认运行不启用 LangSmith 网络追踪，也不依赖在线模型 SDK。
+- 建立 `ModelProvider` Protocol、四类 Pydantic 结构化输出和确定性 Fake Model。模型响应一律视为不可信 JSON；每个任务最多验证/重试 2 次，失败后使用显式规则降级并写入结构化 Error。
+- 建立 `InvestigationState`、稳定 ID 去重/有界 reducer、并行增量计数和估算 Token usage reducer。Graph State 只保存 `EvidenceRef`，不保存原始日志、span、指标序列或文档正文对象。
+- 实现 `parse_incident → build_investigation_plan → Send collect_evidence → aggregate_evidence → generate_hypotheses → verify_hypotheses → judge_evidence → refine/generate_report` 实际图。
+- `dispatch_evidence_collection` 在发送前按剩余工具预算和并发上限裁剪；同一轮返回多个最小作用域 `Send`。异步栅栏测试只有在 7 个 Provider 调用同时开始后才放行，因此不是基于耗时猜测并行。
+- 研究路由是纯函数，优先处理 deadline、工具、模型调用、估算 Token、充分性和最大轮数；模型不能返回节点名或修改预算。
+- 假设验证会过滤不存在的 Evidence 外键并按独立来源降置信度；最终报告只附加 State 中存在的 Evidence ID/Citation，并在错误或预算停止时写明 limitation。
+- 离线装配同时使用 Fixture Provider、Phase 3 `RagKnowledgeProvider` 和 Fake Model；单 Provider 失败不会取消同轮其它分支。
+- 提供完整调查脚本和当前源码 Mermaid 脚本；`GRAPH_CURRENT.md` 由 `draw_mermaid()` 输出生成并由测试逐字符防漂移，没有绘制 Phase 5 的 HITL、checkpoint 或 API。
+- 未实现调查 HTTP API、SSE、后台生命周期、checkpoint、interrupt/Command 恢复或人工审核；这些仍属于 Phase 5。
+
+### 分步 Git 记录
+
+- `495a16e`：新增并锁定 LangGraph 1.2.9 运行时。
+- `93ee1f3`：结构化模型契约、State reducer、预算路由和 11 项单测。
+- `372f69d`：动态 Send 调查节点、二次研究、失败降级和端到端测试。
+- `d60a29d`：离线演示、源码 Mermaid 及文档漂移测试。
+- `e6f0876`：补齐估算 Token 预算停止边界。
+
+### 新增或修改文件
+
+- Graph：`src/incident_copilot/graph/`。
+- 测试：`tests/unit/graph/`、`tests/integration/test_investigation_graph.py`、`tests/integration/test_graph_mermaid.py`。
+- 脚本：`scripts/run_investigation.py`、`scripts/render_graph.py`。
+- 文档/入口：`docs/GRAPH_CURRENT.md`、`README.md`、`Makefile`、`AGENTS.md`、`docs/ROADMAP.md`、`docs/PROGRESS.md`。
+- 依赖：`pyproject.toml`、uv 生成的 `uv.lock`。
+
+### 实际检查结果
+
+| 命令/检查 | 真实结果 |
+| --- | --- |
+| `uv sync` | PASS：解析 61 个包，检查 60 个已安装包 |
+| `uv lock --check` | PASS：锁文件与项目元数据一致，61 packages |
+| `uv run ruff format --check .` | PASS：73 个 Python 文件已格式化 |
+| `uv run ruff check .` | PASS：All checks passed |
+| `uv run mypy src tests scripts` | PASS：73 个 source files，0 issues |
+| `uv run pytest tests/unit/graph tests/integration/test_investigation_graph.py tests/integration/test_graph_mermaid.py` | PASS：22 passed，0 warning，最终复检 0.67s |
+| `uv run pytest` | PASS：121 passed，0 warning，最终复检 1.22s |
+| `uv run python scripts/render_graph.py --check docs/GRAPH_CURRENT.md` | PASS：提交图与当前编译 Graph 一致 |
+| `uv run python scripts/run_investigation.py` | PASS：输出合法 `IncidentReport`；`probable`、1 轮、7 工具、4 Fake Model、13 条六类 Evidence、停止原因为 `evidence_sufficient` |
+
+上述耗时仅是本机测试运行记录，不是性能基准。Fake Model usage 明确标记 `estimated=true`；本阶段没有测量或声明诊断准确率、P95、真实模型成本或泛化质量。
+
+### 已知问题
+
+- Fake Model 是 payment-service 演示用确定性规则，不代表真实 LLM 的诊断能力；当前只有 Provider-neutral Protocol，没有真实模型 Adapter。
+- Token usage 由字符数近似并明确标记 estimated；预算只能在一次调用返回后阻止后续调用，不能预知或中断单次真实模型输出。
+- Graph 当前单进程、无 checkpoint；进程恢复、稳定 thread/run ID、interrupt、HITL 和 SSE 属于 Phase 5。
+- 并行测试证明分支并发启动，但没有进行吞吐量、时延或扩展性基准测试。
+- 报告保留 EvidenceRef/Citation，但原始 Evidence Store 和持久化 Repository 尚未实现。
+- Docker Desktop 的虚拟化问题仍不影响 Phase 4 离线路径；真实 PostgreSQL/checkpointer 集成前仍需修复宿主机虚拟化。
+
+### 手动验证
+
+```text
+uv sync
+uv run python scripts/run_investigation.py
+uv run python scripts/render_graph.py --check docs/GRAPH_CURRENT.md
+uv run pytest tests/unit/graph tests/integration/test_investigation_graph.py tests/integration/test_graph_mermaid.py
+```
+
+调查脚本预期输出 JSON `IncidentReport`，其中 `supporting_evidence[*].evidence_id`、timeline Evidence ID 和 citations 均可回指本次 State。当前没有调查 API；`uvicorn` 仍只提供 Phase 1 的 `/health` 和 OpenAPI。
+
+### 下一阶段输入条件
+
+开始 Phase 5 前必须具备：
+
+1. 用户明确确认进入 Phase 5。
+2. 保持 Phase 4 的 121 项离线测试与 Mermaid 一致性门禁通过。
+3. 设计稳定的 investigation/thread/run ID、后台生命周期、SSE 事件和幂等 API 契约。
+4. 只实现 API、Streaming、Checkpoint 和 HITL，不提前实现 Phase 6 Evaluation 或 Phase 7 真实数据源。

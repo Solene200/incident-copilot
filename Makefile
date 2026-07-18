@@ -1,4 +1,4 @@
-.PHONY: sync format format-check lint typecheck test run rag-ingest rag-search
+.PHONY: sync format format-check lint typecheck test run rag-ingest rag-search graph-demo graph-mermaid
 
 sync:
 	uv sync
@@ -26,3 +26,9 @@ rag-ingest:
 
 rag-search:
 	uv run python scripts/search_knowledge.py --query "database connection pool timeout" --service payment-service
+
+graph-demo:
+	uv run python scripts/run_investigation.py
+
+graph-mermaid:
+	uv run python scripts/render_graph.py --check docs/GRAPH_CURRENT.md
