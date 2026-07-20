@@ -53,6 +53,25 @@ def parse_sse(text: str) -> Iterator[dict[str, Any]]:
         }
 
 
+def test_create_requires_caller_supplied_primary_service_and_time_window() -> None:
+    app = create_app(Settings(environment=RuntimeEnvironment.TEST, _env_file=None))
+    with TestClient(app) as client:
+        raw_query_only = client.post(
+            "/api/v1/investigations",
+            json={"query": "payment requests are timing out"},
+        )
+        multiple_services = client.post(
+            "/api/v1/investigations",
+            json={
+                **request_payload(),
+                "services": ["payment-service", "gateway-service"],
+            },
+        )
+
+    assert raw_query_only.status_code == 422
+    assert multiple_services.status_code == 422
+
+
 def test_create_pause_stream_resume_and_duplicate_resume() -> None:
     app = create_app(Settings(environment=RuntimeEnvironment.TEST, _env_file=None))
     with TestClient(app) as client:

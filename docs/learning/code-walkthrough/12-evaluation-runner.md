@@ -22,7 +22,7 @@ flowchart TD
 
 `OfflineEvaluationRunner` 负责下面的整条执行链；它不把标签暴露给 Graph。
 
-## `run`：失败也进入分母
+## `run`：失败保留在总样例/失败计数，不进入质量均值
 
 ```python
 for sample in dataset.samples:
@@ -37,7 +37,10 @@ for sample in dataset.samples:
     results.append(result)
 ```
 
-样例顺序执行，便于复现和读取原始轨迹。单样例异常转成 FAILED 数据，不能被静默排除。这里宽捕获是 Evaluation 边界的刻意设计，并保留异常类型/消息；不是业务代码吞异常。
+样例顺序执行，便于复现和读取原始轨迹。单样例异常转成 FAILED 数据并进入
+`sample_count/failed_count`，但 `aggregate_metrics` 的质量、检索、用量和时延均值只遍历
+completed 且对应值已定义的样例。这里宽捕获是 Evaluation 边界的刻意设计，并保留异常
+类型/消息；不是业务代码吞异常。
 
 Runner 不直接改变 Graph State；它构造初值、等待 Graph 返回最终 State，再读取计数和报告。Graph 下一节点完全按 Builder 执行。
 

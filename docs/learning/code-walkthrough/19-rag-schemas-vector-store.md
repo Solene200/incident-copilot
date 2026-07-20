@@ -1,6 +1,7 @@
 # 19 RAG Schema 与向量存储
 
-本篇解释 RAG 的全部值对象、统一元数据过滤，以及内存/pgvector 两个 VectorStore Adapter。
+本篇解释 RAG 的全部值对象、统一元数据过滤，以及 Current 内存 Adapter 与 Experimental
+pgvector Adapter。
 
 ## `rag/schemas.py`
 
@@ -60,9 +61,11 @@
 6. 点积除以两端 norm 得 cosine。
 7. 只保留正相似度，按负分数和 chunk ID 稳定排序。
 
-## `PgVectorSession` 与 `PgVectorStore`
+## Experimental：`PgVectorSession` 与 `PgVectorStore`
 
-`PgVectorSession` 把 execute、transaction、fetch_all 缩成最小 SQL 端口，可由 psycopg 或 SQLAlchemy wrapper 实现。项目不因此把任一客户端变成默认依赖。
+`PgVectorSession` 把 execute、transaction、fetch_all 缩成最小 SQL 端口，可由 psycopg 或
+SQLAlchemy wrapper 实现。当前只有 recording fake 合同测试，未接入默认 RAG/Compose，
+也没有 live pgvector 验收；项目不因此把任一客户端变成默认依赖。
 
 构造器验证维度和表名安全正则。表名无法使用 SQL 参数占位符，所以只允许安全标识符；所有数据值仍参数化。
 

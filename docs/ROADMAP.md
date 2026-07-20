@@ -371,7 +371,29 @@
 - [x] 锁文件、Ruff、mypy、223 项全量 pytest、Graph 检查、CLI、RAG、API/HITL 和新离线
   Evaluation 通过。Learning Guide 的既有 IC-P1-07 失败已真实记录并留给 Batch D。
 
-## 14. 跨阶段质量门禁
+## 14. 简历最终版优化 Batch D：文档与产品边界
+
+### 状态
+
+`completed`（2026-07-20）；完成远端提交后停止，不自动扩大到新的产品或架构能力。
+
+### 实际验收
+
+- [x] API 和产品文档明确当前输入为自然语言描述与调用方提供的结构化 incident context；不声称 raw query
+  自动解析 service/time window，未新增 parser；单 primary service 通过 schema 和 API 集成测试固化。
+- [x] `AGENTS.md` 改为稳定能力/质量门禁；历史 Phase 不再作为过期授权限制。
+- [x] Learning Guide 覆盖 `core/clock.py`，生成器支持 `--check`，39 个章节与 24 个源码 walkthrough
+  的聚合文件已重新生成并校验 current。
+- [x] README、PRD、Architecture、Data Model、Graph Design、Demo/Interview Guide 区分 Current、
+  Experimental、Target；PgVector 标为 Experimental 且不在默认 RAG 链路。
+- [x] Evaluation 文档写明每个指标的单样例定义与聚合分母；Batch D 新 run 为 3/3 completed、0 failed，
+  原始 Evidence relevance F1 0.5167 未被掩盖。
+- [x] Live Prometheus 明确仅验证 payment 场景；DNS/cache 为 fixture-only。2026-07-18 Compose 结果带
+  日期、commit、环境和 artifact，标为 historical；本批未运行 Docker，未伪装成当前复验。
+- [x] 锁文件、Ruff、mypy、235 项 pytest、Graph 文档、Learning Guide、CLI、RAG、API/SSE/HITL 和
+  新离线 Evaluation 全部通过。
+
+## 15. 跨阶段质量门禁
 
 Phase 1 起每阶段至少运行：
 
@@ -379,8 +401,8 @@ Phase 1 起每阶段至少运行：
 uv lock --check
 uv run ruff format --check .
 uv run ruff check .
-uv run mypy src tests
-uv run pytest <本阶段相关目录>
+uv run mypy src tests scripts
+uv run pytest
 ```
 
 阶段报告必须区分：通过、失败、因当前范围不适用、因环境阻塞未运行。后两者不能写成通过。

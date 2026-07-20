@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import os
 import re
 from dataclasses import dataclass
@@ -381,8 +382,34 @@ def build_source_code_guide() -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
+def check_generated_guides() -> None:
+    """验证跟踪的聚合指南与当前分章及源码覆盖完全一致。"""
+    expected = {
+        OUTPUT_PATH: build_learning_guide(),
+        SOURCE_GUIDE_PATH: build_source_code_guide(),
+    }
+    stale = [
+        path.relative_to(ROOT).as_posix()
+        for path, content in expected.items()
+        if not path.exists() or path.read_text(encoding="utf-8") != content
+    ]
+    if stale:
+        raise ValueError("Learning Guide 生成产物已过期\n" + "\n".join(stale))
+
+
 def main() -> None:
-    """生成综合教学版和定义优先的源码解析版。"""
+    """生成聚合指南,或在不写文件的情况下检查跟踪产物。"""
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Validate source coverage and tracked generated guides without writing files.",
+    )
+    arguments = parser.parse_args()
+    if arguments.check:
+        check_generated_guides()
+        print("Learning Guide source coverage and generated files are current")
+        return
     OUTPUT_PATH.write_text(build_learning_guide(), encoding="utf-8", newline="\n")
     SOURCE_GUIDE_PATH.write_text(build_source_code_guide(), encoding="utf-8", newline="\n")
     print(f"Generated {OUTPUT_PATH.relative_to(ROOT)} from {len(CHAPTERS)} chapters")

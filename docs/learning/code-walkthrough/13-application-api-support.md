@@ -74,7 +74,7 @@ with asyncio.Runner(loop_factory=asyncio.SelectorEventLoop) as runner:
 
 | 代码 | 含义 |
 | --- | --- |
-| `query`, `services`, `start_time`, `end_time` | 调查必填范围，长度和集合大小都有上限 |
+| `query`, `services`, `start_time`, `end_time` | query 是自然语言描述；单 primary service 与带时区时间窗由调用方提供，不从 query 推断 |
 | `symptoms`, `severity`, `environment` | 可选上下文，使用领域枚举而非任意字符串 |
 | `options` | 服务端允许的有界预算配置 |
 | `@field_validator("services")` | 复用领域层服务名规范化规则 |

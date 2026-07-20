@@ -45,7 +45,8 @@ flowchart LR
 | Compose API | Prometheus | Fixture + 本地 RAG | Fake | PostgreSQL |
 | 单次真实指标演示 | Prometheus | Fixture + 本地 RAG | Fake | 可选 |
 
-Prometheus 指标虽然真实经过 OTLP、Collector、Prometheus 和 HTTP API, 但指标发生器仍是仓库内 synthetic demo。项目没有声称接入生产数据。
+Prometheus 指标虽然真实经过 OTLP、Collector、Prometheus 和 HTTP API, 但指标发生器仍是
+仓库内 payment-only synthetic demo。DNS/cache live mapping 未实现，项目没有声称接入生产数据。
 
 ## 为什么选 LangGraph
 

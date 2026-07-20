@@ -48,6 +48,8 @@ record, created = await _service(request).create(
 
 - 输入来自 HTTP JSON 和可选 `Idempotency-Key` Header。
 - `CreateInvestigationRequest` 先完成字段校验。
+- `query` 是自然语言故障描述；调用方还必须显式提交恰好一个 `services` primary service
+  和带时区 `start_time/end_time`。当前不从 query 自动提取这些字段。
 - `to_incident()` 转成领域对象, API 不把原始 dict 传进 Graph。
 - 输出交给 `InvestigationService.create()`。
 - 这里不直接运行 Graph, 所以响应可以快速返回 202。
@@ -97,7 +99,7 @@ async for update in graph.astream(initial, config, stream_mode="updates"):
 真实节点顺序为:
 
 ```text
-parse_incident
+parse_incident  # 校验已有 IncidentContext，不是自然语言 parser
 → build_investigation_plan
 → collect_evidence (多个 Send)
 → aggregate_evidence

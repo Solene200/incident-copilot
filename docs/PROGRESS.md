@@ -4,11 +4,58 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 当前已完成阶段 | Phase 7；简历最终版优化 Batch C |
-| 下一阶段 | 等待用户确认；不得自动进入 Batch D |
+| 当前已完成阶段 | Phase 7；简历最终版优化 Batch D |
+| 下一阶段 | 本轮范围已完成；等待用户后续指令 |
 | 最近更新 | 2026-07-20 |
 | 仓库初始状态 | 空目录，无 `.git` 元数据 |
 | 当前运行环境 | Windows / PowerShell；Python 3.13 可用 |
+
+## 简历最终版优化 Batch D — 文档与产品边界（2026-07-20）
+
+### 完成内容
+
+- 关闭 IC-P1-03、IC-P2-05：README、PRD、Architecture、Data Model、Graph Design、Demo Guide
+  和 Interview Guide 统一标注 Current / Experimental / Target；当前 API 契约明确为“自然语言描述 +
+  调用方提供的单 primary service + 带时区时间窗”，不宣称从 raw query 自动解析 service/time window，
+  也没有新增自然语言 parser。
+- 关闭 IC-P1-06：`AGENTS.md` 改为稳定能力边界、质量门禁和变更纪律；历史 Phase 状态只作记录，
+  不再限制当前工作。默认边界仍不含真实 LLM/Embedding、完整多服务调查、持久化业务 Repository、
+  reranker 或语义压缩。
+- 关闭 IC-P1-07：Learning Guide 的 core infrastructure 精读章节补入 `core/clock.py` 直接链接和契约说明；
+  生成器新增 `--check`，可同时校验 source coverage 与两份跟踪生成物是否最新。
+- 关闭 IC-P2-08、IC-P2-09：Demo 文档把 2026-07-18 Compose 结果标为带日期、commit、环境、artifact
+  的历史记录；PgVector 仅为 Experimental checkpoint 依赖环境，不接入默认 RAG 运行链路。
+- 关闭 IC-P2-10、IC-P2-11：Evaluation 为每个指标写明单样例定义与聚合分母；Live Prometheus 明确只验证
+  payment 场景，DNS/cache 仍是 fixture-only，不外推为 live provider 覆盖。
+- API schema 对 caller-supplied service/time window 和单服务上限提供 OpenAPI 描述；集成测试确认缺少结构化
+  context 或传入多个服务均返回 422，没有用 parser 猜测缺失字段。
+
+### 当前与历史验证证据
+
+| 状态 | 日期 | 代码 | 环境 | Artifact / 结论 |
+| --- | --- | --- | --- | --- |
+| Current offline | 2026-07-20 | Batch D implementation commit（提交后补录） | Windows / PowerShell；Python 3.13 | `artifacts/evaluation/batch-d-product-boundaries/`；3/3 completed |
+| Current prior batch | 2026-07-20 | `7906944` | Windows / PowerShell；Python 3.13 | `artifacts/evaluation/batch-c-tool-attempt-budget/` |
+| Historical live | 2026-07-18 | `9249b8c` | Windows Docker Linux Engine | Phase 7 Compose/Prometheus 记录；仅 payment 场景 |
+
+### 全量验收
+
+| 检查 | 结果 |
+| --- | --- |
+| `uv lock --check` | PASS：74 packages |
+| `uv run ruff format --check .` | PASS：111 files |
+| `uv run ruff check .` | PASS |
+| `uv run mypy src tests scripts` | PASS：111 source files |
+| `uv run pytest` | PASS：235 passed in 3.78s |
+| Graph 文档检查 | PASS：`GRAPH_CURRENT.md` current |
+| Learning Guide 生成/检查 | PASS：39 chapters + 24 walkthroughs；generated files current |
+| CLI Demo | PASS：probable；7 logical / 7 physical；引用、正反证和 rejected hypothesis 完整 |
+| RAG Demo | PASS：6 documents / 18 chunks；Top-2 payment runbook citation 可解析 |
+| API/SSE/HITL Demo | PASS：50 events；waiting_review → accept → completed；初始/恢复 run ID 不同 |
+| 离线 Evaluation | PASS：run `evalrun_20260720T095024Z_5a059ee4`；3/3 completed、0 failed |
+| Docker Compose / Live Prometheus | 本批未运行；保留为 2026-07-18 historical evidence，不写成当前复验 |
+
+Batch D 到此停止；没有实现本轮明确排除的能力，也不自动开始新的 Batch。
 
 ## 简历最终版优化 Batch C — 工具重试与预算（2026-07-20）
 

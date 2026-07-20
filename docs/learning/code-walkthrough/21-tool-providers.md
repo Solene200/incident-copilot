@@ -1,6 +1,8 @@
 # 21 Fixture 与 Prometheus Provider
 
-本篇解释两个真正取数的 Tool Adapter：一个从版本化本地事故数据过滤，另一个通过 HTTP 查询 Prometheus。
+本篇解释两个真正取数的 Tool Adapter：一个从版本化本地事故数据过滤，另一个通过 HTTP
+查询 Prometheus。后者的 Current live 范围只验证 payment/database-pool synthetic demo；
+DNS/cache 场景没有等价 live mapping。
 
 ## `tools/providers/fixture.py`
 

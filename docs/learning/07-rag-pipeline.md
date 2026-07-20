@@ -110,9 +110,11 @@ RRF 使用排名而非原始分数, 避免直接比较 BM25 分数和 cosine 相
 
 融合后按 `content_hash` 去重。保留排名最高 Chunk 的完整 Citation。`RagKnowledgeProvider` 再将命中转换为 Evidence, Citation 不会被模型重写。
 
-## PgVectorStore 的真实边界
+## Experimental：PgVectorStore 的真实边界
 
-`PgVectorStore` 已实现参数化 SQL Adapter 和事务式 replace, 但默认 RAG 没有连接 Compose PostgreSQL。它也不会在运行时隐式建表。
+`PgVectorStore` 已实现参数化 SQL Adapter 和事务式 replace, 但只有 recording fake 合同
+测试；默认 RAG 没有连接 Compose PostgreSQL，也没有 live 数据库 RAG 验收。它不会在
+运行时隐式建表，不能描述成 Current 默认能力。
 
 后端类比:
 

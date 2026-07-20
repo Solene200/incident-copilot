@@ -27,13 +27,28 @@ class CreateInvestigationRequest(ApiModel):
     """经过校验的用户调查范围和有界执行策略。"""
 
     # 用户对故障现象和调查目标的原始描述。
-    query: str = Field(min_length=1, max_length=10_000)
-    # 本次调查允许涉及的服务名称集合。
-    services: tuple[str, ...] = Field(min_length=1, max_length=20)
+    query: str = Field(
+        min_length=1,
+        max_length=10_000,
+        description=(
+            "Natural-language incident description. The current API does not infer the service "
+            "or time window from this text."
+        ),
+    )
+    # 调用方提供的单个 primary service,当前版本不从 query 自动提取。
+    services: tuple[str, ...] = Field(
+        min_length=1,
+        max_length=1,
+        description="Exactly one caller-supplied primary service; not inferred from query.",
+    )
     # 调查时间窗口的起点, 必须携带时区。
-    start_time: AwareDatetime
+    start_time: AwareDatetime = Field(
+        description="Caller-supplied timezone-aware investigation window start."
+    )
     # 调查时间窗口的终点, 必须晚于 start_time。
-    end_time: AwareDatetime
+    end_time: AwareDatetime = Field(
+        description="Caller-supplied timezone-aware investigation window end."
+    )
     # 用户已经观察到的故障症状, 例如错误率上升。
     symptoms: tuple[str, ...] = Field(default_factory=tuple, max_length=50)
     # 故障严重程度, 未提供时为 unknown。

@@ -4,22 +4,31 @@
 
 | 字段 | 值 |
 | --- | --- |
-| 状态 | Phase 0 基线，已评审待用户确认 |
-| 更新日期 | 2026-07-18 |
-| 目标版本 | 作品集 MVP（Phase 0–7） |
+| 状态 | Current 产品边界（简历最终版） |
+| 更新日期 | 2026-07-20 |
+| 目标版本 | 作品集 MVP |
 | 主要用户 | AI 应用开发岗位面试官、候选人、学习者 |
+
+本文使用三个固定状态标签：**Current** 表示默认或明确可运行链路；**Experimental**
+表示已有隔离实现但未进入默认链路或缺少 live 集成证据；**Target** 表示未来方向，不能
+作为当前能力陈述。
 
 ## 2. 问题与机会
 
 微服务故障调查需要在日志、指标、Trace、服务拓扑、发布变更、Runbook 和历史事故之间建立时间与因果关联。常见的“把一批日志交给 LLM 总结”缺少查询规划、反证、停止条件、引用和恢复能力，结果难以审计。
 
-IncidentCopilot 将调查过程建模为受预算约束的 LangGraph 工作流：解析问题、规划、并行取证、生成与验证假设、判断证据充分性、必要时追加研究，最后输出可追溯报告并支持人工复核。
+IncidentCopilot 将调查过程建模为受预算约束的 LangGraph 工作流：接收已经结构化的事故
+范围与自然语言描述、规划、并行取证、生成与验证假设、判断证据充分性、必要时追加研究，
+最后输出可追溯报告并支持人工复核。
 
 ## 3. 产品目标
 
 ### 3.1 必须达成
 
-- 用户用自然语言提交故障，系统提取服务、时间范围、症状、严重性和环境。
+- **Current**：调用方提交自然语言故障描述，并显式提供单个 primary service 与带时区
+  `start_time/end_time`；症状、严重性和环境是结构化可选字段。
+- **Current 限制**：系统不从 raw query 自动推断 service 或 time window，也不实现新的
+  自然语言 parser；缺少必填范围时 API 返回校验错误而不是猜测。
 - 同轮并行查询六类证据：日志、指标、Trace、变更、拓扑、知识。
 - 每条结论关联支持证据、反对证据和来源引用。
 - 证据不足时产生下一轮定向查询，并受研究轮数、工具调用、Token 和时间预算约束。
@@ -59,9 +68,9 @@ Fixture 的预期真相在数据集中显式标注，但不直接暴露给 Agent
 
 ## 5. 功能需求
 
-| ID | 需求 | 验收摘要 | 目标 Phase |
+| ID | 需求 | 验收摘要 | 状态 / 历史目标 |
 | --- | --- | --- | --- |
-| FR-01 | 解析事故上下文 | 输出通过 Schema 校验、时间带时区 | 4 |
+| FR-01 | 校验事故上下文 | 自然语言描述 + 调用方提供的单 primary service/带时区时间窗通过 Schema | Current |
 | FR-02 | 制定调查计划 | 覆盖必要数据源并说明目的 | 4 |
 | FR-03 | 并行多源取证 | 单个失败不取消其它分支 | 2、4 |
 | FR-04 | 检索知识 | Hybrid Search、过滤、去重、引用 | 3 |
@@ -73,7 +82,7 @@ Fixture 的预期真相在数据集中显式标注，但不直接暴露给 Agent
 | FR-10 | 流式事件 | 发送节点、工具、预算、审核事件 | 5 |
 | FR-11 | checkpoint/HITL | 可用 thread ID 恢复并接受/追加研究 | 5 |
 | FR-12 | 离线 Evaluation | 数据集、Runner、逐项与聚合指标 | 6 |
-| FR-13 | 真实数据源 | 至少一个真实 Provider 可切换 | 7 |
+| FR-13 | 真实数据源 | payment 场景的 Prometheus metrics Provider 可切换 | Current（窄场景） |
 
 ## 6. 报告契约
 
@@ -106,9 +115,9 @@ Fixture 的预期真相在数据集中显式标注，但不直接暴露给 Agent
 
 ### 8.1 MVP 范围内
 
-- 单个事故、多个相关服务的只读诊断。
+- 单个事故、一个调用方提供的 primary service 的只读诊断。
 - Fixture 全链路和至少一个真实可观测数据源适配器。
-- 英文/中文自然语言输入；内部枚举与代码使用英文。
+- 英文/中文自然语言描述与结构化调查范围；当前不从描述自动解析服务或时间窗。
 - 小型知识库、离线评估集、API 与可选演示 UI。
 - 人工审核报告及要求追加研究。
 
@@ -133,21 +142,19 @@ Fixture 的预期真相在数据集中显式标注，但不直接暴露给 Agent
 | 依赖 API 快速变化 | 兼容范围 + 锁文件；Graph API 适配集中；升级需回归图测试 |
 | RAG 指标看似漂亮 | 数据集版本化、逐样本输出、禁止只报告聚合结果 |
 
-## 10. 未决问题
+## 10. Current、Experimental 与 Target
 
-这些问题不阻塞 Phase 0，需在对应阶段用实测决策：
+| 状态 | 能力 |
+| --- | --- |
+| Current | Fixture/Fake 默认链路；单 primary service；FastAPI/SSE/HITL；内存任务事件仓储；Memory/PostgreSQL checkpoint；payment-only Prometheus metrics 演示 |
+| Experimental | `PgVectorStore` 参数化 SQL Adapter；仅 recording fake 合同测试，不在默认 RAG 或 Compose 运行链路 |
+| Target | 真实 LLM/Embedding、Loki/Tempo、完整多服务联合调查、持久 Investigation/Event/Evidence Store、生产鉴权与分布式执行 |
 
-- Phase 4 的默认 Model 是纯规则 Fake Model，还是可选本地小模型；基线必须先保证 Fake 可复现。
-- Phase 5 生产式 checkpoint 采用 PostgreSQL 还是 SQLite 演示后端；目标架构是 PostgreSQL，本地零依赖测试可使用内存实现。
-- Phase 7 优先接 OpenTelemetry Demo 的哪一种数据源；建议根据可重复部署性在 Prometheus 与 Tempo 中择一。
-- 是否实现 Streamlit；它是可选展示层，不得阻塞 API 和核心图交付。
+## 11. 当前产品级完成定义
 
-## 11. 产品级完成定义
-
-- Phase 0–7 的强制验收项全部通过，且路线图有真实记录。
+- Current 能力的强制质量门禁通过，且路线图/进度保留真实记录。
 - 新机器按 README 可启动 fixture 演示并运行测试。
 - API、Graph、RAG、Provider 和 Evaluation 均至少有一条端到端验证路径。
 - 报告中的引用可以解析回具体证据或知识块。
 - 真实演示和离线评估数据可复现，没有虚构指标。
 - 已知限制、失败模式和下一步扩展清晰记录。
-

@@ -75,7 +75,8 @@ uv run python scripts/build_learning_guide.py
 - “State 读取/写入”专指 LangGraph `InvestigationState`。
 - “任务状态”专指 `InvestigationRecord.status`。
 - “Checkpoint”保存 Graph 执行快照, 不等于业务 Repository。
-- “真实 Prometheus”表示真实经过 HTTP API 的指标链路; 其他数据源仍可能来自 Fixture。
+- “真实 Prometheus”只表示 payment synthetic 指标真实经过 HTTP API 链路；DNS/cache live
+  mapping 未实现，其他数据源仍来自 Fixture。
 - 文档中的流程图只展示源码中存在的节点、函数和依赖。
 
 ## 当前生产化边界

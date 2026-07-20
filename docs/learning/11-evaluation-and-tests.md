@@ -77,7 +77,9 @@ flowchart LR
 - 任一 Citation 验证层的分母为空。
 - 某样例使用异常多轮次。
 
-Runner 因此先写逐样例结果, 再写 summary。单样例异常会成为 `SampleStatus.FAILED`, 仍计入 sample/failed count。
+Runner 因此先写逐样例结果, 再写 summary。单样例异常会成为 `SampleStatus.FAILED`,
+仍计入 sample/failed count，但不会隐式按零进入质量、用量或时延均值；这些均值的分母是
+completed 且相应指标已定义的样例数。Citation 三层的单样例分母分别在上表定义。
 
 ## 测试分层
 

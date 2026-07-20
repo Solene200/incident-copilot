@@ -2,6 +2,18 @@
 
 本篇按源码顺序解释 `core/` 下全部文件。它们为其他模块提供横切能力，但不承载调查业务。
 
+## `core/clock.py`
+
+源码：[src/incident_copilot/core/clock.py](../../../src/incident_copilot/core/clock.py)
+
+`Clock = Callable[[], datetime]` 把“现在”缩成最小可注入端口；生产使用 `utc_now()` 返回
+带 UTC 时区的实时时间，Graph、Service、Registry 和 Provider 测试可注入固定或可推进
+时钟。这样 deadline、duration、checkpoint 恢复和 citation 时间无需 monkeypatch 全局
+`datetime`，也不会把 naive datetime 混入领域对象。
+
+修改风险：直接在业务节点散落 `datetime.now()` 会破坏确定性测试；测试时钟若返回 naive
+datetime，会在与带时区 deadline 比较时失败。
+
 ## `core/config.py`
 
 源码：[src/incident_copilot/core/config.py](../../../src/incident_copilot/core/config.py)
@@ -115,7 +127,9 @@ payload = {
 
 ## State、路由和工程影响
 
-四个模块都不直接读写 `InvestigationState`，也不决定下一节点。它们分别类似配置中心、统一异常基类、结构化日志中间件和 AOP tracing。错误地让 `core/` 导入 Graph 或 FastAPI 会形成反向依赖，破坏其跨协议复用能力。
+五个模块都不直接读写 `InvestigationState`，也不决定下一节点。它们分别类似时钟端口、
+配置中心、统一异常基类、结构化日志中间件和 AOP tracing。错误地让 `core/` 导入 Graph
+或 FastAPI 会形成反向依赖，破坏其跨协议复用能力。
 
 ## 对照测试
 

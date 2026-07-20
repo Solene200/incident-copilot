@@ -13,6 +13,9 @@
 
 路由只做协议转换。它不直接访问 Graph State，也不选择 Tool。
 
+创建契约要求 `query` 自然语言描述、恰好一个调用方提供的 primary service，以及带时区的
+`start_time/end_time`。raw-query-only 请求会得到 422；当前没有自动 service/time parser。
+
 ## 创建调查
 
 ```python
