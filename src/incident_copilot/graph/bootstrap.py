@@ -1,13 +1,10 @@
 """纯 Fixture 和混合 Provider 调查 Graph 的组合根。"""
 
-from collections.abc import Callable
-from datetime import datetime
-
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
+from incident_copilot.core.clock import Clock, utc_now
 from incident_copilot.graph.builder import InvestigationGraph, build_investigation_graph
 from incident_copilot.graph.model import FakeModelProvider, ModelProvider
-from incident_copilot.graph.nodes import utc_now
 from incident_copilot.rag.bootstrap import build_fixture_retriever
 from incident_copilot.rag.provider import RagKnowledgeProvider
 from incident_copilot.tools.builtin import ProviderBundle, build_tool_registry
@@ -19,7 +16,7 @@ def build_offline_investigation_graph(
     *,
     model: ModelProvider | None = None,
     fixture_provider: FixtureProvider | None = None,
-    clock: Callable[[], datetime] = utc_now,
+    clock: Clock = utc_now,
     checkpointer: BaseCheckpointSaver[str] | None = None,
     require_human_review: bool = False,
 ) -> InvestigationGraph:
@@ -40,7 +37,7 @@ def build_mixed_investigation_graph(
     metrics_provider: MetricsProvider,
     model: ModelProvider | None = None,
     fixture_provider: FixtureProvider | None = None,
-    clock: Callable[[], datetime] = utc_now,
+    clock: Clock = utc_now,
     checkpointer: BaseCheckpointSaver[str] | None = None,
     require_human_review: bool = False,
 ) -> InvestigationGraph:
@@ -57,6 +54,7 @@ def build_mixed_investigation_graph(
             knowledge=RagKnowledgeProvider(retriever),
         ),
         retry_backoff_seconds=0,
+        clock=clock,
     )
     return build_investigation_graph(
         registry=registry,

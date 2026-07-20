@@ -10,12 +10,13 @@ import logging
 import re
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from time import perf_counter
 from typing import Generic, TypeVar, cast
 
 from pydantic import ValidationError
 
+from incident_copilot.core.clock import Clock, utc_now
 from incident_copilot.core.telemetry import trace_async
 from incident_copilot.domain.common import SourceType
 from incident_copilot.domain.evidence import Evidence
@@ -87,10 +88,16 @@ class ToolRegistry:
     当前调用的 remaining budget、deadline、单次 timeout 和有限 retry。
     """
 
-    def __init__(self, *, retry_backoff_seconds: float = 0.01) -> None:
+    def __init__(
+        self,
+        *,
+        retry_backoff_seconds: float = 0.01,
+        clock: Clock = utc_now,
+    ) -> None:
         if retry_backoff_seconds < 0 or retry_backoff_seconds > 1:
             raise ValueError("retry_backoff_seconds must be between 0 and 1")
         self._retry_backoff_seconds = retry_backoff_seconds
+        self._clock = clock
         self._tools: dict[str, ToolDefinition[ToolInput]] = {}
 
     @property
@@ -141,7 +148,7 @@ class ToolRegistry:
         max_attempts = min(definition.max_retries + 1, context.remaining_tool_calls)
         while attempts < max_attempts:
             attempts += 1
-            remaining_seconds = (context.deadline - datetime.now(UTC)).total_seconds()
+            remaining_seconds = (context.deadline - self._clock()).total_seconds()
             if remaining_seconds <= 0:
                 failure: ProviderError = ProviderTimeoutError(
                     "tool deadline exceeded",
@@ -196,7 +203,7 @@ class ToolRegistry:
             if failure.retryable and attempts < max_attempts:
                 # 退避也必须装得进剩余 deadline,否则立即返回归一化失败。
                 backoff = self._retry_backoff_seconds * (2 ** (attempts - 1))
-                remaining_seconds = (context.deadline - datetime.now(UTC)).total_seconds()
+                remaining_seconds = (context.deadline - self._clock()).total_seconds()
                 if backoff < remaining_seconds:
                     await asyncio.sleep(backoff)
                     continue

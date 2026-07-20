@@ -108,6 +108,30 @@ async def test_success_preserves_source_time_service_and_citation() -> None:
 
 
 @pytest.mark.asyncio
+async def test_provider_uses_injected_clock_for_deadline_and_collection_time() -> None:
+    """Provider 的超时判断和证据时间必须来自同一个注入时钟。"""
+    fixed_now = datetime(2026, 7, 18, 12, 0, tzinfo=UTC)
+    transport = FakeTransport()
+    provider = PrometheusMetricsProvider(
+        "http://prometheus:9090",
+        transport=transport,
+        timeout_seconds=1.5,
+        clock=lambda: fixed_now,
+    )
+    fixed_context = QueryContext(
+        correlation_id="prometheus-injected-clock-test",
+        deadline=fixed_now + timedelta(seconds=5),
+        remaining_tool_calls=1,
+    )
+
+    evidence = await provider.query(query(), fixed_context)
+
+    assert evidence[0].collected_at == fixed_now
+    assert evidence[0].citation.retrieved_at == fixed_now
+    assert transport.calls[0][1] == 1.5
+
+
+@pytest.mark.asyncio
 async def test_empty_result_is_not_fabricated() -> None:
     transport = FakeTransport(
         HttpResponse(

@@ -3,6 +3,7 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+from incident_copilot.core.clock import Clock, utc_now
 from incident_copilot.domain.common import SourceType
 from incident_copilot.domain.evidence import Evidence
 from incident_copilot.tools.interfaces import (
@@ -50,9 +51,10 @@ def build_tool_registry(
     timeout_seconds: float = 2.0,
     max_retries: int = 1,
     retry_backoff_seconds: float = 0.01,
+    clock: Clock = utc_now,
 ) -> ToolRegistry:
     """使用注入的 Provider 注册全部七个工具。"""
-    registry = ToolRegistry(retry_backoff_seconds=retry_backoff_seconds)
+    registry = ToolRegistry(retry_backoff_seconds=retry_backoff_seconds, clock=clock)
 
     async def search_logs(query: SearchLogsInput, context: QueryContext) -> Sequence[Evidence]:
         return await providers.logs.search(query, context)

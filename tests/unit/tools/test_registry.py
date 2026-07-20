@@ -407,3 +407,29 @@ async def test_expired_deadline_fails_without_calling_provider() -> None:
     assert captured.value.category is ProviderErrorCategory.TIMEOUT
     assert captured.value.attempts == 1
     assert calls == 0
+
+
+@pytest.mark.asyncio
+async def test_registry_uses_injected_clock_instead_of_system_time() -> None:
+    """固定测试时间早于系统时间时仍应按注入时钟计算剩余预算。"""
+    fixed_now = datetime(2026, 7, 18, 12, 0, tzinfo=UTC)
+    calls = 0
+
+    async def handler(query: SearchLogsInput, context: QueryContext) -> Sequence[Evidence]:
+        nonlocal calls
+        del query, context
+        calls += 1
+        return (sample_log(),)
+
+    registry = ToolRegistry(retry_backoff_seconds=0, clock=lambda: fixed_now)
+    registry.register(make_definition(handler, max_retries=0))
+    context = QueryContext(
+        correlation_id="injected-clock-test",
+        deadline=fixed_now + timedelta(seconds=5),
+        remaining_tool_calls=1,
+    )
+
+    result = await registry.execute("search_logs", valid_arguments(), context)
+
+    assert len(result.evidence) == 1
+    assert calls == 1

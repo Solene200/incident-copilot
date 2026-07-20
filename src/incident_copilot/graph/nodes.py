@@ -8,14 +8,15 @@
 import asyncio
 import hashlib
 from collections import Counter
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Generic, Literal, TypeVar
 
 from langgraph.types import Command, interrupt
 from pydantic import BaseModel, ValidationError
 
+from incident_copilot.core.clock import Clock, utc_now
 from incident_copilot.core.telemetry import trace_async
 from incident_copilot.domain.common import (
     HypothesisStatus,
@@ -58,13 +59,6 @@ from incident_copilot.tools.schemas import QueryContext
 
 # 结构化模型调用返回的任务专属 Pydantic 类型。
 OutputT = TypeVar("OutputT", bound=BaseModel)
-# 返回当前时间的可注入函数类型, 测试使用固定时钟。
-Clock = Callable[[], datetime]
-
-
-def utc_now() -> datetime:
-    """返回带时区的 UTC 时间,供生产装配使用。"""
-    return datetime.now(UTC)
 
 
 @dataclass(frozen=True, slots=True)

@@ -15,6 +15,7 @@ from urllib.request import Request, urlopen
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from incident_copilot.core.clock import Clock, utc_now
 from incident_copilot.domain.common import SourceType
 from incident_copilot.domain.evidence import Citation, Evidence
 from incident_copilot.tools.exceptions import (
@@ -151,12 +152,14 @@ class PrometheusMetricsProvider:
         *,
         transport: PrometheusTransport | None = None,
         timeout_seconds: float = 2.0,
+        clock: Clock = utc_now,
     ) -> None:
         self._base_url = self._validate_base_url(base_url)
         if timeout_seconds <= 0 or timeout_seconds > 30:
             raise ValueError("timeout_seconds must be greater than 0 and at most 30")
         self._timeout_seconds = timeout_seconds
         self._transport = transport or UrllibPrometheusTransport()
+        self._clock = clock
 
     async def query(self, query: QueryMetricsInput, context: QueryContext) -> tuple[Evidence, ...]:
         """执行一次安全范围查询并保留来源定位信息。"""
@@ -170,7 +173,7 @@ class PrometheusMetricsProvider:
 
         promql = self._build_promql(mapping, query)
         request_url = self._build_request_url(promql, query)
-        remaining_seconds = (context.deadline - datetime.now(UTC)).total_seconds()
+        remaining_seconds = (context.deadline - self._clock()).total_seconds()
         timeout_seconds = min(self._timeout_seconds, remaining_seconds)
         if timeout_seconds <= 0:
             raise ProviderTimeoutError(
@@ -286,8 +289,8 @@ class PrometheusMetricsProvider:
                 operation="query_metrics",
             ) from exc
 
-    @staticmethod
     def _series_to_evidence(
+        self,
         series: _PrometheusSeries,
         *,
         query: QueryMetricsInput,
@@ -373,7 +376,7 @@ class PrometheusMetricsProvider:
         ).hexdigest()[:32]
         maximum = max(numeric_values)
         latest = numeric_values[-1]
-        collected_at = datetime.now(UTC)
+        collected_at = self._clock()
         citation = Citation(
             citation_id=f"cit_prom_{identity}",
             uri=request_url,

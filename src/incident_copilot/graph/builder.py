@@ -5,8 +5,8 @@
 ``state.py``。当前并行模型是多个 ``Send`` 指向同一个通用 ``collect_evidence`` 节点。
 """
 
-from collections.abc import Callable, Hashable
-from datetime import datetime, timedelta
+from collections.abc import Hashable
+from datetime import timedelta
 from typing import Literal, overload
 
 from langgraph.checkpoint.base import BaseCheckpointSaver
@@ -14,9 +14,10 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Send
 
+from incident_copilot.core.clock import Clock, utc_now
 from incident_copilot.domain.incident import IncidentContext
 from incident_copilot.graph.model import ModelProvider
-from incident_copilot.graph.nodes import InvestigationNodes, utc_now
+from incident_copilot.graph.nodes import InvestigationNodes
 from incident_copilot.graph.routing import route_after_judge, route_after_parse, route_after_report
 from incident_copilot.graph.schemas import InvestigationOptions, ModelUsage
 from incident_copilot.graph.state import InvestigationState
@@ -32,7 +33,7 @@ def create_initial_state(
     incident: IncidentContext,
     *,
     options: InvestigationOptions | None = None,
-    clock: Callable[[], datetime] = utc_now,
+    clock: Clock = utc_now,
 ) -> InvestigationState:
     """使用校验后的应用输入创建一个边界完整的初始 State。
 
@@ -152,7 +153,7 @@ def build_investigation_graph(
     *,
     registry: ToolRegistry,
     model: ModelProvider,
-    clock: Callable[[], datetime] = utc_now,
+    clock: Clock = utc_now,
     checkpointer: BaseCheckpointSaver[str] | None = None,
     require_human_review: bool = False,
 ) -> InvestigationGraph:

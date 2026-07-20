@@ -10,7 +10,7 @@ from incident_copilot.graph.builder import create_initial_state
 from incident_copilot.tools.providers import FixtureProvider, PrometheusMetricsProvider
 from incident_copilot.tools.providers.prometheus import HttpResponse
 
-TEST_NOW = datetime.now(UTC)
+TEST_NOW = datetime(2026, 7, 18, 12, 0, tzinfo=UTC)
 
 
 class PrometheusFixtureTransport:
@@ -43,6 +43,7 @@ async def test_graph_uses_real_metrics_port_and_keeps_fixture_fallback_sources()
     metrics = PrometheusMetricsProvider(
         "http://prometheus:9090",
         transport=PrometheusFixtureTransport(),
+        clock=fixed_clock,
     )
     graph = build_mixed_investigation_graph(
         metrics_provider=metrics,

@@ -8,8 +8,8 @@ State,以及发送给 SSE 客户端的安全事件。
 
 import asyncio
 import logging
-from collections.abc import Callable, Coroutine, Mapping
-from datetime import UTC, datetime, timedelta
+from collections.abc import Coroutine, Mapping
+from datetime import timedelta
 from typing import Any, cast
 from uuid import uuid4
 
@@ -17,6 +17,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.types import Command
 from pydantic import JsonValue
 
+from incident_copilot.core.clock import Clock, utc_now
 from incident_copilot.core.exceptions import ResourceConflictError, ResourceNotFoundError
 from incident_copilot.core.logging import redact_value
 from incident_copilot.domain.evidence import EvidenceRef
@@ -56,11 +57,11 @@ class InvestigationService:
         *,
         graph: InvestigationGraph,
         repository: InvestigationRepository,
-        clock: Callable[[], datetime] | None = None,
+        clock: Clock | None = None,
     ) -> None:
         self._graph = graph
         self._repository = repository
-        self._clock = clock or (lambda: datetime.now(UTC))
+        self._clock = clock or utc_now
         self._tasks: dict[str, asyncio.Task[None]] = {}
         self._locks: dict[str, asyncio.Lock] = {}
 

@@ -14,6 +14,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from incident_copilot.api.errors import register_exception_handlers
 from incident_copilot.api.routes.health import router as health_router
 from incident_copilot.api.routes.investigations import router as investigations_router
+from incident_copilot.core.clock import Clock, utc_now
 from incident_copilot.core.config import MetricsBackend, Settings, get_settings
 from incident_copilot.core.logging import configure_logging
 from incident_copilot.graph.bootstrap import (
@@ -31,6 +32,7 @@ def _build_runtime_graph(
     settings: Settings,
     *,
     checkpointer: BaseCheckpointSaver[str],
+    clock: Clock = utc_now,
 ) -> InvestigationGraph:
     """选择配置指定的指标 Adapter,但不在启动阶段探测远端服务。
 
@@ -42,11 +44,14 @@ def _build_runtime_graph(
             metrics_provider=PrometheusMetricsProvider(
                 settings.prometheus_base_url,
                 timeout_seconds=settings.prometheus_timeout_seconds,
+                clock=clock,
             ),
+            clock=clock,
             checkpointer=checkpointer,
             require_human_review=True,
         )
     return build_offline_investigation_graph(
+        clock=clock,
         checkpointer=checkpointer,
         require_human_review=True,
     )
@@ -77,9 +82,15 @@ def create_app(
             return
         # Checkpointer 必须覆盖整个应用生命周期;过早关闭会让 thread 无法恢复。
         async with open_checkpointer(resolved_settings) as checkpointer:
+            clock = utc_now
             service = InvestigationService(
-                graph=_build_runtime_graph(resolved_settings, checkpointer=checkpointer),
+                graph=_build_runtime_graph(
+                    resolved_settings,
+                    checkpointer=checkpointer,
+                    clock=clock,
+                ),
                 repository=InMemoryInvestigationRepository(),
+                clock=clock,
             )
             application.state.investigation_service = service
             try:
