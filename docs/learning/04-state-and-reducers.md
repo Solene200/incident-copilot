@@ -10,6 +10,7 @@ class InvestigationState(TypedDict, total=False):
     completed_steps: Annotated[tuple[StepResult, ...], merge_step_results]
     evidence: Annotated[tuple[EvidenceRef, ...], merge_evidence]
     tool_call_count: Annotated[int, add_count]
+    tool_attempt_count: Annotated[int, add_count]
     ...
 ```
 
@@ -51,14 +52,16 @@ State 保存 `EvidenceRef`, 不保存 `Evidence.content`。这是为了控制 ch
 | 字段 | 意义 |
 | --- | --- |
 | `research_round` / `max_research_rounds` | 当前轮与最大轮数 |
-| `tool_call_count` / `max_tool_calls` | 工具实际尝试与上限 |
+| `tool_call_count` / `max_tool_calls` | 逻辑工具步骤与上限 |
+| `tool_attempt_count` / `max_tool_attempts` | 包含 retry 的物理 Provider 尝试与上限 |
 | `max_parallel_tools` | 单批最大并发分支 |
 | `model_call_count` / `max_model_calls` | 模型调用与上限 |
 | `model_usage` / `max_estimated_tokens` | Token usage 与预算 |
 | `deadline_at` / `deadline_exceeded` | 调查总时间边界 |
 | `stop_reason` | 最终停止原因 |
 
-计数字段的节点输出是“本节点增量”, 不是累计总数。例如每个 collect 分支返回 `tool_call_count=1`, `add_count` 才负责合并。
+计数字段的节点输出是“本节点增量”, 不是累计总数。例如每个 collect 分支返回
+`tool_call_count=1` 和真实 `tool_attempt_count=attempts`, `add_count` 才负责合并。
 
 ### 输出、错误和审核
 

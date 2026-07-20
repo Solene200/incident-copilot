@@ -19,7 +19,11 @@ from incident_copilot.domain.incident import IncidentContext
 from incident_copilot.graph.model import ModelProvider
 from incident_copilot.graph.nodes import InvestigationNodes
 from incident_copilot.graph.routing import route_after_judge, route_after_parse, route_after_report
-from incident_copilot.graph.schemas import InvestigationOptions, ModelUsage
+from incident_copilot.graph.schemas import (
+    InvestigationOptions,
+    InvestigationStep,
+    ModelUsage,
+)
 from incident_copilot.graph.state import InvestigationState
 from incident_copilot.tools.registry import ToolRegistry
 
@@ -56,8 +60,11 @@ def create_initial_state(
         research_round=1,
         max_research_rounds=policy.max_research_rounds,
         max_tool_calls=policy.max_tool_calls,
+        max_tool_attempts=policy.max_tool_attempts,
+        tool_attempt_limits={},
         max_parallel_tools=policy.max_parallel_tools,
         tool_call_count=0,
+        tool_attempt_count=0,
         tool_success_count=0,
         tool_failure_count=0,
         max_model_calls=policy.max_model_calls,
@@ -120,9 +127,10 @@ def _dispatch_batch(
 ) -> list[Send] | Literal["aggregate_evidence", "generate_hypotheses"]:
     """按剩余工具预算和并发上限选择下一批未执行查询。"""
     # 使用已完成查询键过滤重放,防止同一工具参数跨批次重复执行。
-    remaining = max(0, state["max_tool_calls"] - state.get("tool_call_count", 0))
+    remaining_steps = max(0, state["max_tool_calls"] - state.get("tool_call_count", 0))
+    remaining_attempts = max(0, state["max_tool_attempts"] - state.get("tool_attempt_count", 0))
     # 在 fan-out 前计算批次大小,避免并行分支共同越过调查级工具预算。
-    limit = min(remaining, state["max_parallel_tools"])
+    limit = min(remaining_steps, remaining_attempts, state["max_parallel_tools"])
     completed_queries = {item.query_key for item in state.get("completed_steps", ())}
     candidates = sorted(
         (
@@ -132,7 +140,14 @@ def _dispatch_batch(
         ),
         key=lambda step: (-step.priority, step.step_id),
     )
-    selected = candidates[:limit]
+    selected: list[tuple[InvestigationStep, int]] = []
+    for step in candidates[:limit]:
+        configured_limit = state.get("tool_attempt_limits", {}).get(step.tool_name, 1)
+        attempt_allowance = min(configured_limit, remaining_attempts)
+        if attempt_allowance <= 0:
+            break
+        selected.append((step, attempt_allowance))
+        remaining_attempts -= attempt_allowance
     if not selected:
         return empty_target
     # 每个 Send 只携带单步执行所需字段,不复制完整证据和假设历史。
@@ -142,10 +157,11 @@ def _dispatch_batch(
             {
                 "incident": state["incident"],
                 "current_step": step,
+                "current_step_attempt_limit": attempt_allowance,
                 "deadline_at": state["deadline_at"],
             },
         )
-        for step in selected
+        for step, attempt_allowance in selected
     ]
 
 

@@ -206,7 +206,7 @@ async def test_rag_provider_returns_tool_compatible_evidence() -> None:
     context = QueryContext(
         correlation_id="rag-provider-test",
         deadline=datetime(2026, 7, 18, 3, 1, tzinfo=UTC),
-        remaining_tool_calls=5,
+        remaining_tool_attempts=5,
     )
 
     runbooks = await provider.search_runbooks(
@@ -251,7 +251,7 @@ async def test_rag_provider_does_not_block_event_loop_during_sync_retrieval(
     context = QueryContext(
         correlation_id="rag-provider-timeout",
         deadline=datetime(2026, 7, 18, 3, 1, tzinfo=UTC),
-        remaining_tool_calls=5,
+        remaining_tool_attempts=5,
     )
 
     with pytest.raises(TimeoutError):

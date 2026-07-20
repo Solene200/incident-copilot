@@ -100,6 +100,36 @@ def test_create_pause_stream_resume_and_duplicate_resume() -> None:
         completed = wait_for_status(client, investigation_id, "completed")
         assert completed["report"] is not None
         assert completed["review_required"] is False
+        completed_stream = client.get(f"/api/v1/investigations/{investigation_id}/events")
+        completed_events = list(parse_sse(completed_stream.text))
+        tool_events = [
+            event
+            for event in completed_events
+            if event["event"] in {"tool.completed", "tool.failed"}
+        ]
+        budget_events = [event for event in completed_events if event["event"] == "budget.updated"]
+        report_event = next(
+            event for event in completed_events if event["event"] == "report.completed"
+        )
+        stats = completed["report"]["investigation_stats"]
+        assert len(tool_events) == stats["tool_call_count"]
+        assert (
+            sum(event["data"]["data"]["attempts"] for event in tool_events)
+            == stats["tool_attempt_count"]
+        )
+        assert (
+            sum(event["data"]["data"].get("logical_tool_steps_delta", 0) for event in budget_events)
+            == stats["tool_call_count"]
+        )
+        assert (
+            sum(
+                event["data"]["data"].get("physical_tool_attempts_delta", 0)
+                for event in budget_events
+            )
+            == stats["tool_attempt_count"]
+        )
+        assert report_event["data"]["data"]["tool_call_count"] == stats["tool_call_count"]
+        assert report_event["data"]["data"]["tool_attempt_count"] == stats["tool_attempt_count"]
         after_completion = client.post(
             f"/api/v1/investigations/{investigation_id}/resume",
             json={"action": "accept"},

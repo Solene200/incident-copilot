@@ -12,6 +12,7 @@ from incident_copilot.domain.common import SourceType
 from incident_copilot.domain.review import ReviewAction
 from incident_copilot.graph.bootstrap import build_offline_investigation_graph
 from incident_copilot.graph.builder import create_initial_state
+from incident_copilot.graph.schemas import InvestigationOptions
 from incident_copilot.tools.providers.fixture import FixtureProvider
 
 TEST_NOW = datetime(2026, 7, 18, 12, 0, tzinfo=UTC)
@@ -122,3 +123,49 @@ async def test_recompiled_graph_resumes_the_same_checkpoint_thread() -> None:
 
     assert completed["review_completed"] is True
     assert (await rebuilt_graph.aget_state(config)).next == ()
+
+
+@pytest.mark.asyncio
+async def test_recompiled_graph_preserves_physical_attempt_budget_on_resume() -> None:
+    saver = InMemorySaver()
+    config: RunnableConfig = {"configurable": {"thread_id": "thread_attempt_budget"}}
+    first_graph = build_offline_investigation_graph(
+        clock=fixed_clock,
+        checkpointer=saver,
+        require_human_review=True,
+    )
+    initial = create_initial_state(
+        FixtureProvider.payment_service().fixture.incident,
+        options=InvestigationOptions(max_tool_attempts=8),
+        clock=fixed_clock,
+    )
+    await first_graph.ainvoke(initial, config)
+    first_pause = await first_graph.aget_state(config)
+    assert first_pause.values["tool_attempt_count"] == 7
+
+    rebuilt_graph = build_offline_investigation_graph(
+        clock=fixed_clock,
+        checkpointer=saver,
+        require_human_review=True,
+    )
+    request_more: Command[Any] = Command(
+        resume={
+            "action": ReviewAction.REQUEST_MORE_RESEARCH.value,
+            "comment": "Use the one remaining physical attempt.",
+            "requested_queries": [
+                {
+                    "query": "one bounded follow-up",
+                    "source_types": [SourceType.LOG.value],
+                    "service": "payment-service",
+                }
+            ],
+        }
+    )
+    await rebuilt_graph.ainvoke(request_more, config)
+
+    second_pause = await rebuilt_graph.aget_state(config)
+    stats = second_pause.values["final_report"].investigation_stats
+    assert second_pause.next == ("human_review",)
+    assert second_pause.values["tool_attempt_count"] == stats.tool_attempt_count == 8
+    assert second_pause.values["tool_call_count"] == stats.tool_call_count == 8
+    assert second_pause.values["stop_reason"].value == "tool_budget_exhausted"

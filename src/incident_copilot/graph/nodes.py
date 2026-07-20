@@ -102,12 +102,16 @@ class InvestigationNodes:
         """在 Graph 边界接收已经过领域校验的事故信息。
 
         State 读取: ``incident.services``、``deadline_at``。
-        State 写入: ``deadline_exceeded``; 已超时时额外写 ``stop_reason``。
+        State 写入: ``deadline_exceeded``、可信工具 attempt 上限; 已超时时额外写
+        ``stop_reason``。
         """
         if not state["incident"].services:
             raise ValueError("investigation requires at least one normalized service")
         deadline_exceeded = self._clock() >= state["deadline_at"]
-        update: InvestigationState = {"deadline_exceeded": deadline_exceeded}
+        update: InvestigationState = {
+            "deadline_exceeded": deadline_exceeded,
+            "tool_attempt_limits": self._registry.attempt_limits,
+        }
         if deadline_exceeded:
             update["stop_reason"] = StopReason.DEADLINE_EXCEEDED
         return update
@@ -186,7 +190,7 @@ class InvestigationNodes:
         context = QueryContext(
             correlation_id=f"{state['incident'].incident_id}:{step.step_id}",
             deadline=state["deadline_at"],
-            remaining_tool_calls=1,
+            remaining_tool_attempts=state["current_step_attempt_limit"],
         )
         try:
             # Registry 统一负责参数 Schema、白名单、超时、重试和输出边界。
@@ -210,6 +214,7 @@ class InvestigationNodes:
                 "completed_steps": (step_result,),
                 "errors": (error,),
                 "tool_call_count": 1,
+                "tool_attempt_count": attempts,
                 "tool_failure_count": 1,
             }
 
@@ -230,6 +235,7 @@ class InvestigationNodes:
             "completed_steps": (step_result,),
             "evidence": refs,
             "tool_call_count": 1,
+            "tool_attempt_count": result.attempts,
             "tool_success_count": 1,
         }
 
@@ -486,11 +492,13 @@ class InvestigationNodes:
             citations=citations,
             investigation_summary=(
                 f"Completed {state['research_round']} bounded research round(s) with "
-                f"{state.get('tool_call_count', 0)} tool call(s)."
+                f"{state.get('tool_call_count', 0)} logical tool step(s) and "
+                f"{state.get('tool_attempt_count', 0)} physical attempt(s)."
             ),
             investigation_stats=InvestigationStats(
                 research_rounds=state["research_round"],
                 tool_call_count=state.get("tool_call_count", 0),
+                tool_attempt_count=state.get("tool_attempt_count", 0),
                 tool_success_count=state.get("tool_success_count", 0),
                 tool_failure_count=state.get("tool_failure_count", 0),
                 model_call_count=total_model_calls,

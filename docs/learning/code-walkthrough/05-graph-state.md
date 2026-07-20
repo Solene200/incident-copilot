@@ -11,6 +11,7 @@ class InvestigationState(TypedDict, total=False):
     completed_steps: Annotated[tuple[StepResult, ...], merge_step_results]
     evidence: Annotated[tuple[EvidenceRef, ...], merge_evidence]
     tool_call_count: Annotated[int, add_count]
+    tool_attempt_count: Annotated[int, add_count]
     model_usage: Annotated[ModelUsage, add_usage]
 ```
 

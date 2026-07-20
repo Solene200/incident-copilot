@@ -53,7 +53,7 @@ if query_key in completed_queries or query_key in seen_queries:
 context = QueryContext(
     correlation_id=f"{state['incident'].incident_id}:{step.step_id}",
     deadline=state["deadline_at"],
-    remaining_tool_calls=1,
+    remaining_tool_attempts=state["current_step_attempt_limit"],
 )
 result = await self._registry.execute(step.tool_name, step.arguments, context)
 ```
@@ -65,6 +65,7 @@ return {
     "completed_steps": (step_result,),
     "evidence": refs,
     "tool_call_count": 1,
+    "tool_attempt_count": result.attempts,
     "tool_success_count": 1,
 }
 ```

@@ -33,7 +33,7 @@ def make_context() -> QueryContext:
     return QueryContext(
         correlation_id="integration-seven-tools",
         deadline=datetime.now(UTC) + timedelta(seconds=5),
-        remaining_tool_calls=20,
+        remaining_tool_attempts=20,
     )
 
 

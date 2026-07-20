@@ -37,6 +37,7 @@ return InvestigationState(
     incident=incident,
     research_round=1,
     max_tool_calls=policy.max_tool_calls,
+    max_tool_attempts=policy.max_tool_attempts,
     max_parallel_tools=policy.max_parallel_tools,
     model_usage=ModelUsage(),
     deadline_at=started_at + timedelta(seconds=policy.timeout_seconds),
@@ -51,8 +52,11 @@ return InvestigationState(
 `dispatch_evidence_collection` 是 plan/refine 后的入口：已有 `stop_reason` 时直接去报告，否则调用 `_dispatch_batch(..., empty_target="aggregate_evidence")`。`dispatch_after_aggregate` 是批次 barrier 后的入口：仍有步骤就继续发 Send，计划耗尽时以 `generate_hypotheses` 为 empty target。两者复用下面的预算预留逻辑。
 
 ```python
-remaining = max(0, state["max_tool_calls"] - state.get("tool_call_count", 0))
-limit = min(remaining, state["max_parallel_tools"])
+remaining_steps = max(0, state["max_tool_calls"] - state.get("tool_call_count", 0))
+remaining_attempts = max(
+    0, state["max_tool_attempts"] - state.get("tool_attempt_count", 0)
+)
+limit = min(remaining_steps, remaining_attempts, state["max_parallel_tools"])
 completed_queries = {item.query_key for item in state.get("completed_steps", ())}
 ```
 

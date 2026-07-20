@@ -65,8 +65,10 @@ class InvestigationOptions(DomainModel):
 
     # 最多允许执行的调查研究轮数。
     max_research_rounds: int = Field(default=2, ge=1, le=5)
-    # 整次调查最多允许尝试的工具调用数。
+    # 整次调查最多允许终止的逻辑工具步骤数。
     max_tool_calls: int = Field(default=14, ge=1, le=100)
+    # 整次调查最多允许的物理 Provider 尝试数,包括 retry。
+    max_tool_attempts: int = Field(default=28, ge=1, le=400)
     # 一个批次最多同时运行的工具步骤数。
     max_parallel_tools: int = Field(default=7, ge=1, le=20)
     # 整次调查最多允许调用模型 Provider 的次数。
@@ -158,7 +160,7 @@ class StepResult(DomainModel):
     evidence_ids: tuple[str, ...] = Field(default_factory=tuple, max_length=50)
     # 失败步骤对应的 InvestigationError ID。
     error_id: str | None = Field(default=None, pattern=r"^err_[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
-    # Provider 调用尝试次数, 包括第一次调用。
+    # 本逻辑步骤消耗的物理 Provider 尝试次数, 包括第一次调用。
     attempts: int = Field(ge=0, le=10)
     # 工具步骤开始执行的时间。
     started_at: AwareDatetime

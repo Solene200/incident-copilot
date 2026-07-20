@@ -105,6 +105,11 @@ class ToolRegistry:
         """返回稳定的工具发现列表,但不暴露 Provider 实例。"""
         return tuple(sorted(self._tools))
 
+    @property
+    def attempt_limits(self) -> dict[str, int]:
+        """返回每个工具包含首次调用在内的可信物理尝试上限。"""
+        return {name: definition.max_retries + 1 for name, definition in self._tools.items()}
+
     def register(self, definition: ToolDefinition[InputT]) -> None:
         """注册一个工具定义,并拒绝意外的同名替换。
 
@@ -129,8 +134,8 @@ class ToolRegistry:
         definition = self._tools.get(name)
         if definition is None:
             raise ToolNotFoundError(f"unknown tool: {name}")
-        if context.remaining_tool_calls < 1:
-            raise ToolBudgetExceededError("tool call budget exhausted")
+        if context.remaining_tool_attempts < 1:
+            raise ToolBudgetExceededError("tool attempt budget exhausted")
 
         try:
             # 外部或模型生成的 arguments 必须先收敛到具体工具 Schema。
@@ -145,7 +150,7 @@ class ToolRegistry:
         )
 
         attempts = 0
-        max_attempts = min(definition.max_retries + 1, context.remaining_tool_calls)
+        max_attempts = min(definition.max_retries + 1, context.remaining_tool_attempts)
         while attempts < max_attempts:
             attempts += 1
             remaining_seconds = (context.deadline - self._clock()).total_seconds()

@@ -76,8 +76,10 @@ class InvestigationStats(DomainModel):
 
     # 本次调查实际执行的研究轮数。
     research_rounds: int = Field(ge=0)
-    # 本次调查尝试的工具调用总数。
+    # 本次调查终止的逻辑工具步骤总数。
     tool_call_count: int = Field(ge=0)
+    # 本次调查实际消耗的物理 Provider 尝试总数,包含 retry。
+    tool_attempt_count: int = Field(ge=0)
     # 成功完成的工具调用数。
     tool_success_count: int = Field(ge=0)
     # 失败或降级的工具调用数。
@@ -120,8 +122,10 @@ class InvestigationStats(DomainModel):
     def validate_totals(self) -> Self:
         if self.total_tokens != self.input_tokens + self.output_tokens:
             raise ValueError("total_tokens must equal input_tokens plus output_tokens")
-        if self.tool_success_count + self.tool_failure_count > self.tool_call_count:
-            raise ValueError("tool outcomes must not exceed tool_call_count")
+        if self.tool_success_count + self.tool_failure_count != self.tool_call_count:
+            raise ValueError("tool outcomes must equal tool_call_count")
+        if self.tool_attempt_count < self.tool_call_count:
+            raise ValueError("tool_attempt_count must not be less than tool_call_count")
         if self.completed_at is not None and self.completed_at < self.started_at:
             raise ValueError("completed_at must not precede started_at")
         if (self.completed_at is None) != (self.duration_ms is None):

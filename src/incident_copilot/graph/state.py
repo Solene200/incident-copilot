@@ -156,6 +156,8 @@ class InvestigationState(TypedDict, total=False):
     pending_steps: tuple[InvestigationStep, ...]
     # Send 分支当前负责执行的单个工具步骤。
     current_step: InvestigationStep
+    # 当前 Send 分支获准消耗的物理工具尝试数。
+    current_step_attempt_limit: int
     # 已终止步骤的有界集合, 并行分支按 step_id 合并。
     completed_steps: Annotated[tuple[StepResult, ...], merge_step_results]
     # 已收集的轻量证据引用, 并行分支按 evidence_id 合并。
@@ -172,12 +174,18 @@ class InvestigationState(TypedDict, total=False):
     research_round: int
     # 允许执行的最大研究轮数。
     max_research_rounds: int
-    # 整次调查允许的工具调用总数。
+    # 整次调查允许的逻辑工具步骤总数。
     max_tool_calls: int
+    # 整次调查允许的物理工具尝试总数,包含重试。
+    max_tool_attempts: int
+    # 可信 Registry 为每个工具声明的单逻辑步骤最大物理尝试数。
+    tool_attempt_limits: dict[str, int]
     # 一个批次允许并行执行的最大工具数。
     max_parallel_tools: int
-    # 工具调用累计增量, 并行分支通过 add_count 求和。
+    # 逻辑工具步骤累计增量, 并行分支通过 add_count 求和。
     tool_call_count: Annotated[int, add_count]
+    # 物理工具尝试累计增量, 并行分支通过 add_count 求和。
+    tool_attempt_count: Annotated[int, add_count]
     # 成功工具调用累计增量。
     tool_success_count: Annotated[int, add_count]
     # 失败工具调用累计增量。

@@ -68,6 +68,7 @@ def _report(*, include_citation: bool = True) -> IncidentReport:
     stats = InvestigationStats(
         research_rounds=1,
         tool_call_count=2,
+        tool_attempt_count=2,
         tool_success_count=2,
         tool_failure_count=0,
         model_call_count=4,

@@ -47,8 +47,8 @@ allow-list
 definition = self._tools.get(name)
 if definition is None:
     raise ToolNotFoundError(f"unknown tool: {name}")
-if context.remaining_tool_calls < 1:
-    raise ToolBudgetExceededError("tool call budget exhausted")
+if context.remaining_tool_attempts < 1:
+    raise ToolBudgetExceededError("tool attempt budget exhausted")
 tool_input = definition.input_model.model_validate(arguments)
 ```
 
@@ -57,7 +57,7 @@ tool_input = definition.input_model.model_validate(arguments)
 ### 2. deadline、timeout 和 retry
 
 ```python
-max_attempts = min(definition.max_retries + 1, context.remaining_tool_calls)
+max_attempts = min(definition.max_retries + 1, context.remaining_tool_attempts)
 while attempts < max_attempts:
     remaining_seconds = (context.deadline - datetime.now(UTC)).total_seconds()
     attempt_timeout = min(definition.timeout_seconds, remaining_seconds)

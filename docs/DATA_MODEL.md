@@ -163,7 +163,8 @@ Graph State 中的轻量投影：`evidence_id`、`source_type`、`title`、`summ
 ### 8.1 InvestigationStats
 
 - `research_rounds`
-- `tool_call_count`
+- `tool_call_count`（终止的逻辑步骤数）
+- `tool_attempt_count`（包含 retry 的物理 Provider 尝试数）
 - `tool_success_count` / `tool_failure_count`
 - `model_call_count`
 - `input_tokens` / `output_tokens` / `total_tokens`

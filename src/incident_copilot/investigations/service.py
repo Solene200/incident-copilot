@@ -272,6 +272,7 @@ class InvestigationService:
         options = InvestigationOptions(
             max_research_rounds=state.get("max_research_rounds", 2),
             max_tool_calls=state.get("max_tool_calls", 14),
+            max_tool_attempts=state.get("max_tool_attempts", 28),
             max_parallel_tools=state.get("max_parallel_tools", 7),
             max_model_calls=state.get("max_model_calls", 20),
             max_estimated_tokens=state.get("max_estimated_tokens", 20_000),
@@ -391,7 +392,11 @@ class InvestigationService:
             await self._append_event(
                 completed,
                 EventType.REPORT_COMPLETED,
-                {"report_id": report.report_id},
+                {
+                    "report_id": report.report_id,
+                    "tool_call_count": report.investigation_stats.tool_call_count,
+                    "tool_attempt_count": report.investigation_stats.tool_attempt_count,
+                },
             )
         except asyncio.CancelledError:
             raise
@@ -446,6 +451,7 @@ class InvestigationService:
                         "step_id": step.step_id,
                         "tool_name": step.tool_name,
                         "status": step.status.value,
+                        "attempts": step.attempts,
                         "evidence_ids": list(step.evidence_ids),
                     },
                 )
@@ -474,6 +480,7 @@ class InvestigationService:
             budget_keys = {
                 "research_round",
                 "tool_call_count",
+                "tool_attempt_count",
                 "model_call_count",
                 "model_usage",
                 "stop_reason",
@@ -482,7 +489,19 @@ class InvestigationService:
                 await self._append_event(
                     record,
                     EventType.BUDGET_UPDATED,
-                    {"node": node},
+                    {
+                        "node": node,
+                        **(
+                            {"logical_tool_steps_delta": node_update["tool_call_count"]}
+                            if "tool_call_count" in node_update
+                            else {}
+                        ),
+                        **(
+                            {"physical_tool_attempts_delta": node_update["tool_attempt_count"]}
+                            if "tool_attempt_count" in node_update
+                            else {}
+                        ),
+                    },
                 )
 
     async def _append_event(
@@ -534,6 +553,7 @@ class InvestigationService:
         exhausted = (
             state["research_round"] >= state["max_research_rounds"]
             or state.get("tool_call_count", 0) >= state["max_tool_calls"]
+            or state.get("tool_attempt_count", 0) >= state["max_tool_attempts"]
             or state.get("model_call_count", 0) >= state["max_model_calls"]
             or usage.input_tokens + usage.output_tokens >= state["max_estimated_tokens"]
         )

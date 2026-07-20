@@ -100,9 +100,10 @@ Send(
 ## 分批并发
 
 ```python
-remaining = max_tool_calls - tool_call_count
-limit = min(remaining, max_parallel_tools)
-selected = candidates[:limit]
+remaining_steps = max_tool_calls - tool_call_count
+remaining_attempts = max_tool_attempts - tool_attempt_count
+limit = min(remaining_steps, remaining_attempts, max_parallel_tools)
+# 按工具 attempt limit 逐项预留，整批预留不得超过 remaining_attempts。
 ```
 
 如果计划有 7 步但 `max_parallel_tools=2`, Graph 会执行:

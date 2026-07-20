@@ -20,6 +20,7 @@ def make_stats(**overrides: object) -> InvestigationStats:
     values: dict[str, object] = {
         "research_rounds": 1,
         "tool_call_count": 2,
+        "tool_attempt_count": 3,
         "tool_success_count": 2,
         "tool_failure_count": 0,
         "model_call_count": 0,
@@ -92,6 +93,11 @@ def test_report_requires_root_cause_for_probable_disposition() -> None:
 def test_stats_reject_invented_token_total() -> None:
     with pytest.raises(ValidationError, match="total_tokens"):
         make_stats(input_tokens=2, output_tokens=3, total_tokens=99)
+
+
+def test_stats_reject_physical_attempts_below_logical_steps() -> None:
+    with pytest.raises(ValidationError, match="tool_attempt_count"):
+        make_stats(tool_attempt_count=1)
 
 
 def test_stats_reject_negative_evidence_count() -> None:

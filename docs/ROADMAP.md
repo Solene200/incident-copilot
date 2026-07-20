@@ -351,7 +351,27 @@
 - [x] 新 Evaluation 产物为 `artifacts/evaluation/batch-b-core-correctness/`：3/3 completed、0 failed，tool selection F1、tool argument accuracy、root-cause accuracy 和三层 Citation 指标均为 1.0；Evidence relevance F1 0.5167 原样保留。
 - [x] 全量锁文件、Ruff、mypy、217 项 pytest 和 Graph 检查通过；CLI、RAG、API/SSE/HITL、离线 Evaluation 通过。Learning Guide 的既有 IC-P1-07 失败已真实记录并留给 Batch D。
 
-## 13. 跨阶段质量门禁
+## 13. 简历最终版优化 Batch C：工具重试与预算
+
+### 状态
+
+`completed`（2026-07-20）；按用户协议完成远端提交后停止，不自动进入 Batch D。
+
+### 实际验收
+
+- [x] logical tool step 与 physical attempt 使用独立 State/预算字段；retry 不重复计算
+  logical step，报告同时披露两个真实总数。
+- [x] retryable Graph 路径可在有限配额内重试，non-retryable 只尝试一次。
+- [x] 并行 `Send` 分支在 fan-out 前共享预留全局 attempt 预算，Graph 集成测试证明
+  3 个步骤合计 5 attempts 且没有分别透支。
+- [x] checkpoint 保存累计 attempts；重新编译 Graph 并恢复同一 thread 后从 7 累计到 8，
+  没有预算重置。
+- [x] State reducer、SSE tool/budget/report events 与最终 `InvestigationStats` 的 logical/physical
+  计数由 API 集成测试逐项核对一致。
+- [x] 锁文件、Ruff、mypy、223 项全量 pytest、Graph 检查、CLI、RAG、API/HITL 和新离线
+  Evaluation 通过。Learning Guide 的既有 IC-P1-07 失败已真实记录并留给 Batch D。
+
+## 14. 跨阶段质量门禁
 
 Phase 1 起每阶段至少运行：
 

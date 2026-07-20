@@ -36,7 +36,7 @@ def make_context() -> QueryContext:
     return QueryContext(
         correlation_id="test-fixture-provider",
         deadline=datetime.now(UTC) + timedelta(seconds=5),
-        remaining_tool_calls=10,
+        remaining_tool_attempts=10,
     )
 
 

@@ -48,7 +48,7 @@ flowchart LR
 
 ```text
 tool name allow-list
-→ remaining_tool_calls
+→ remaining_tool_attempts
 → input_model.model_validate(arguments)
 → deadline 和单次 timeout
 → Provider handler
@@ -60,14 +60,14 @@ tool name allow-list
 
 - `correlation_id`: 关联一次步骤。
 - `deadline`: 不允许 Provider 越过调查总时间。
-- `remaining_tool_calls`: 限制本次包装器可使用的尝试数。
+- `remaining_tool_attempts`: Graph fan-out 为当前逻辑步骤预留的物理尝试数。
 
 ## Timeout 和 Retry
 
 Registry 计算:
 
 ```python
-max_attempts = min(max_retries + 1, remaining_tool_calls)
+max_attempts = min(max_retries + 1, remaining_tool_attempts)
 attempt_timeout = min(tool_timeout, remaining_deadline)
 ```
 

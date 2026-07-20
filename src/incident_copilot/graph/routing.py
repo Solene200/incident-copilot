@@ -41,6 +41,8 @@ def budget_stop_reason(state: InvestigationState) -> StopReason | None:
         return StopReason.DEADLINE_EXCEEDED
     if state.get("tool_call_count", 0) >= state["max_tool_calls"]:
         return StopReason.TOOL_BUDGET_EXHAUSTED
+    if state.get("tool_attempt_count", 0) >= state["max_tool_attempts"]:
+        return StopReason.TOOL_BUDGET_EXHAUSTED
     if state.get("model_call_count", 0) >= state["max_model_calls"]:
         return StopReason.MODEL_BUDGET_EXHAUSTED
     usage = state.get("model_usage")

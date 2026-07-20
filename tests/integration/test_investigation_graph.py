@@ -23,7 +23,10 @@ from incident_copilot.graph.schemas import (
     stable_query_key,
 )
 from incident_copilot.tools.builtin import ProviderBundle, build_tool_registry
-from incident_copilot.tools.exceptions import ProviderUnavailableError
+from incident_copilot.tools.exceptions import (
+    ProviderMalformedResponseError,
+    ProviderUnavailableError,
+)
 from incident_copilot.tools.providers.fixture import FixtureProvider
 from incident_copilot.tools.schemas import (
     GetRecentChangesInput,
@@ -45,6 +48,84 @@ def fixed_clock() -> datetime:
 
 def fixture_incident() -> IncidentContext:
     return FixtureProvider.payment_service().fixture.incident
+
+
+class SingleStepModel:
+    """仅保留可信 Fake Planner 的首个场景化步骤。"""
+
+    def __init__(self) -> None:
+        self._base = FakeModelProvider()
+
+    async def complete(self, context: ModelContext) -> ModelResponse:
+        response = await self._base.complete(context)
+        if context.task is not ModelTask.PLAN:
+            return response
+        output = PlanOutput.model_validate(response.payload)
+        single = output.model_copy(update={"steps": output.steps[:1]})
+        return ModelResponse(payload=single.model_dump(mode="json"), usage=response.usage)
+
+
+class RetryOnceLogs:
+    """首次暂时失败,第二次返回真实 fixture 证据。"""
+
+    def __init__(self) -> None:
+        self._fixture = FixtureProvider.payment_service()
+        self.attempts = 0
+
+    async def search(self, query: SearchLogsInput, context: QueryContext) -> tuple[Evidence, ...]:
+        self.attempts += 1
+        if self.attempts == 1:
+            raise ProviderUnavailableError(
+                "temporary log outage",
+                provider_name="retry-once-logs",
+                operation="search",
+            )
+        return await self._fixture.search(query, context)
+
+
+class NonRetryableLogs:
+    """返回不可通过重复调用修复的 malformed response 失败。"""
+
+    def __init__(self) -> None:
+        self.attempts = 0
+
+    async def search(self, query: SearchLogsInput, context: QueryContext) -> tuple[Evidence, ...]:
+        del query, context
+        self.attempts += 1
+        raise ProviderMalformedResponseError(
+            "malformed log payload",
+            provider_name="non-retryable-logs",
+            operation="search",
+        )
+
+
+class RetryOnceSignals:
+    """让前三个并行信号各自首次失败,用于证明共享 attempt 预算。"""
+
+    def __init__(self) -> None:
+        self._fixture = FixtureProvider.payment_service()
+        self.attempts_by_operation: dict[str, int] = {}
+
+    def _fail_first(self, operation: str) -> None:
+        attempts = self.attempts_by_operation.get(operation, 0) + 1
+        self.attempts_by_operation[operation] = attempts
+        if attempts == 1:
+            raise ProviderUnavailableError(
+                "temporary signal outage",
+                provider_name="retry-once-signals",
+                operation=operation,
+            )
+
+    async def search(self, query: SearchLogsInput, context: QueryContext) -> tuple[Evidence, ...]:
+        self._fail_first("search_logs")
+        return await self._fixture.search(query, context)
+
+    async def query(
+        self, query: QueryMetricsInput | QueryTracesInput, context: QueryContext
+    ) -> tuple[Evidence, ...]:
+        operation = "query_metrics" if isinstance(query, QueryMetricsInput) else "query_traces"
+        self._fail_first(operation)
+        return await self._fixture.query(query, context)
 
 
 @pytest.mark.asyncio
@@ -236,6 +317,131 @@ async def test_tool_budget_is_reserved_before_parallel_dispatch() -> None:
 
     assert state["tool_call_count"] == 3
     assert len(state["completed_steps"]) == 3
+    assert state["stop_reason"] is StopReason.TOOL_BUDGET_EXHAUSTED
+
+
+@pytest.mark.asyncio
+async def test_graph_retries_retryable_tool_without_counting_an_extra_logical_step() -> None:
+    fixture = FixtureProvider.payment_service()
+    logs = RetryOnceLogs()
+    registry = build_tool_registry(
+        ProviderBundle(
+            logs=logs,
+            metrics=fixture,
+            traces=fixture,
+            changes=fixture,
+            topology=fixture,
+            knowledge=fixture,
+        ),
+        max_retries=2,
+        retry_backoff_seconds=0,
+    )
+    graph = build_investigation_graph(
+        registry=registry,
+        model=SingleStepModel(),
+        clock=fixed_clock,
+    )
+    initial = create_initial_state(
+        fixture_incident(),
+        options=InvestigationOptions(
+            max_research_rounds=1,
+            max_tool_calls=1,
+            max_tool_attempts=3,
+        ),
+        clock=fixed_clock,
+    )
+
+    state = await graph.ainvoke(initial)
+
+    stats = state["final_report"].investigation_stats
+    assert logs.attempts == 2
+    assert state["tool_call_count"] == stats.tool_call_count == 1
+    assert state["tool_attempt_count"] == stats.tool_attempt_count == 2
+    assert state["tool_success_count"] == stats.tool_success_count == 1
+    assert state["tool_failure_count"] == stats.tool_failure_count == 0
+    assert state["completed_steps"][0].attempts == 2
+
+
+@pytest.mark.asyncio
+async def test_graph_does_not_retry_non_retryable_tool_failure() -> None:
+    fixture = FixtureProvider.payment_service()
+    logs = NonRetryableLogs()
+    registry = build_tool_registry(
+        ProviderBundle(
+            logs=logs,
+            metrics=fixture,
+            traces=fixture,
+            changes=fixture,
+            topology=fixture,
+            knowledge=fixture,
+        ),
+        max_retries=3,
+        retry_backoff_seconds=0,
+    )
+    graph = build_investigation_graph(
+        registry=registry,
+        model=SingleStepModel(),
+        clock=fixed_clock,
+    )
+    initial = create_initial_state(
+        fixture_incident(),
+        options=InvestigationOptions(
+            max_research_rounds=1,
+            max_tool_calls=1,
+            max_tool_attempts=4,
+        ),
+        clock=fixed_clock,
+    )
+
+    state = await graph.ainvoke(initial)
+
+    stats = state["final_report"].investigation_stats
+    assert logs.attempts == 1
+    assert state["tool_call_count"] == stats.tool_call_count == 1
+    assert state["tool_attempt_count"] == stats.tool_attempt_count == 1
+    assert state["tool_success_count"] == stats.tool_success_count == 0
+    assert state["tool_failure_count"] == stats.tool_failure_count == 1
+    assert state["completed_steps"][0].attempts == 1
+
+
+@pytest.mark.asyncio
+async def test_parallel_branches_share_one_global_physical_attempt_budget() -> None:
+    fixture = FixtureProvider.payment_service()
+    signals = RetryOnceSignals()
+    registry = build_tool_registry(
+        ProviderBundle(
+            logs=signals,
+            metrics=signals,
+            traces=signals,
+            changes=fixture,
+            topology=fixture,
+            knowledge=fixture,
+        ),
+        max_retries=1,
+        retry_backoff_seconds=0,
+    )
+    graph = build_investigation_graph(
+        registry=registry,
+        model=FakeModelProvider(),
+        clock=fixed_clock,
+    )
+    initial = create_initial_state(
+        fixture_incident(),
+        options=InvestigationOptions(
+            max_research_rounds=1,
+            max_tool_attempts=5,
+        ),
+        clock=fixed_clock,
+    )
+
+    state = await graph.ainvoke(initial)
+
+    stats = state["final_report"].investigation_stats
+    assert sum(signals.attempts_by_operation.values()) == 5
+    assert state["tool_call_count"] == stats.tool_call_count == 3
+    assert state["tool_attempt_count"] == stats.tool_attempt_count == 5
+    assert state["tool_success_count"] == stats.tool_success_count == 2
+    assert state["tool_failure_count"] == stats.tool_failure_count == 1
     assert state["stop_reason"] is StopReason.TOOL_BUDGET_EXHAUSTED
 
 

@@ -118,7 +118,8 @@
 | 字段 | 默认值 | 上限作用 |
 | --- | ---: | --- |
 | `max_research_rounds` | 2 | 最多进行几轮“证据不足 → 再调查” |
-| `max_tool_calls` | 14 | 全部工具调用总数 |
+| `max_tool_calls` | 14 | 全部逻辑工具步骤总数 |
+| `max_tool_attempts` | 28 | 包含 retry 的物理 Provider 尝试总数 |
 | `max_parallel_tools` | 7 | 一个批次最多并行多少工具 |
 | `max_model_calls` | 20 | 结构化模型调用总数 |
 | `max_estimated_tokens` | 20000 | 输入和输出 Token 总预算 |

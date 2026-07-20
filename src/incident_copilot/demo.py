@@ -32,7 +32,7 @@ async def wait_for_metric(
         context = QueryContext(
             correlation_id="phase7-observability-demo",
             deadline=now + timedelta(seconds=5),
-            remaining_tool_calls=1,
+            remaining_tool_attempts=1,
         )
         try:
             evidence = await provider.query(query, context)

@@ -13,6 +13,8 @@ def base_state() -> InvestigationState:
         max_research_rounds=2,
         tool_call_count=2,
         max_tool_calls=10,
+        tool_attempt_count=3,
+        max_tool_attempts=20,
         model_call_count=2,
         max_model_calls=10,
         model_usage=ModelUsage(input_tokens=10, output_tokens=10),
@@ -27,6 +29,7 @@ def base_state() -> InvestigationState:
     (
         ({"deadline_exceeded": True}, StopReason.DEADLINE_EXCEEDED),
         ({"tool_call_count": 10}, StopReason.TOOL_BUDGET_EXHAUSTED),
+        ({"tool_attempt_count": 20}, StopReason.TOOL_BUDGET_EXHAUSTED),
         ({"model_call_count": 10}, StopReason.MODEL_BUDGET_EXHAUSTED),
         (
             {"model_usage": ModelUsage(input_tokens=600, output_tokens=400)},

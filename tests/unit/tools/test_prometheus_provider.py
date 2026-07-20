@@ -74,7 +74,7 @@ def context(*, expired: bool = False) -> QueryContext:
     return QueryContext(
         correlation_id="prometheus-provider-test",
         deadline=deadline,
-        remaining_tool_calls=3,
+        remaining_tool_attempts=3,
     )
 
 
@@ -121,7 +121,7 @@ async def test_provider_uses_injected_clock_for_deadline_and_collection_time() -
     fixed_context = QueryContext(
         correlation_id="prometheus-injected-clock-test",
         deadline=fixed_now + timedelta(seconds=5),
-        remaining_tool_calls=1,
+        remaining_tool_attempts=1,
     )
 
     evidence = await provider.query(query(), fixed_context)

@@ -130,7 +130,8 @@ Phase 3 默认使用确定性 Fake Embedding 和内存向量/BM25 实现；pgvec
 ### 7.1 预算层级
 
 - 每调查最大研究轮数，默认建议 3。
-- 每调查最大工具调用数，默认建议 30。
+- 每调查最多 14 个逻辑工具步骤、28 次物理 Provider 尝试；retry 消耗 attempt，
+  不重复计算 logical step。
 - 每调查最大模型 Token 预算，由 Provider 统一计量。
 - 调查总 deadline 与单节点/单工具 timeout。
 - 每查询最大时间窗口、服务数、top_k 与返回字节数。

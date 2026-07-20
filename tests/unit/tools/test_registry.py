@@ -28,12 +28,12 @@ from incident_copilot.tools.schemas import (
 )
 
 
-def make_context(*, remaining_tool_calls: int = 3, expired: bool = False) -> QueryContext:
+def make_context(*, remaining_tool_attempts: int = 3, expired: bool = False) -> QueryContext:
     offset = timedelta(seconds=-1 if expired else 5)
     return QueryContext(
         correlation_id="registry-test",
         deadline=datetime.now(UTC) + offset,
-        remaining_tool_calls=remaining_tool_calls,
+        remaining_tool_attempts=remaining_tool_attempts,
     )
 
 
@@ -130,7 +130,7 @@ async def test_registry_rejects_duplicate_unknown_invalid_and_exhausted_calls() 
         )
     with pytest.raises(ToolBudgetExceededError, match="budget exhausted"):
         await registry.execute(
-            "search_logs", valid_arguments(), make_context(remaining_tool_calls=0)
+            "search_logs", valid_arguments(), make_context(remaining_tool_attempts=0)
         )
 
     assert calls == 0
@@ -183,7 +183,7 @@ async def test_registry_never_retries_past_callers_remaining_budget() -> None:
         await registry.execute(
             "search_logs",
             valid_arguments(),
-            make_context(remaining_tool_calls=1),
+            make_context(remaining_tool_attempts=1),
         )
 
     assert captured.value.attempts == 1
@@ -426,7 +426,7 @@ async def test_registry_uses_injected_clock_instead_of_system_time() -> None:
     context = QueryContext(
         correlation_id="injected-clock-test",
         deadline=fixed_now + timedelta(seconds=5),
-        remaining_tool_calls=1,
+        remaining_tool_attempts=1,
     )
 
     result = await registry.execute("search_logs", valid_arguments(), context)

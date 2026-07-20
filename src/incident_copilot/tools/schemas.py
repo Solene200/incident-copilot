@@ -23,8 +23,8 @@ class QueryContext(DomainModel):
     correlation_id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
     # 本次调用必须结束的绝对时间。
     deadline: AwareDatetime
-    # Graph 在发起调用前剩余的工具调用预算。
-    remaining_tool_calls: int = Field(ge=0, le=1_000)
+    # Graph 在 fan-out 前为当前逻辑步骤预留的物理尝试预算。
+    remaining_tool_attempts: int = Field(ge=0, le=1_000)
 
 
 class ToolInput(DomainModel):

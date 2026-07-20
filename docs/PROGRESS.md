@@ -4,11 +4,55 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 当前已完成阶段 | Phase 7；简历最终版优化 Batch B |
-| 下一阶段 | 等待用户确认；不得自动进入 Batch C |
+| 当前已完成阶段 | Phase 7；简历最终版优化 Batch C |
+| 下一阶段 | 等待用户确认；不得自动进入 Batch D |
 | 最近更新 | 2026-07-20 |
 | 仓库初始状态 | 空目录，无 `.git` 元数据 |
 | 当前运行环境 | Windows / PowerShell；Python 3.13 可用 |
+
+## 简历最终版优化 Batch C — 工具重试与预算（2026-07-20）
+
+### 完成内容
+
+- 关闭 IC-P1-02：保留 `max_tool_calls/tool_call_count` 的 logical step 语义，新增
+  `max_tool_attempts/tool_attempt_count` 记录包含 retry 的 physical attempt；默认上限分别为
+  14 与 28。
+- `parse_incident` 从可信 ToolRegistry 写入每个工具的 attempt limit；fan-out 按优先级为
+  每个 `Send` 分支预留配额，同一并行批次预留总和不超过 State 剩余的全局 attempt 预算。
+- `collect_evidence` 把分支配额传给 Registry；retryable 失败可在配额内重试，non-retryable
+  失败立即终止；节点分别累计一个 logical result 与真实 attempts。
+- logical/physical 计数均使用 reducer 合并并写入 checkpoint；重新编译 Graph 后恢复同一
+  thread，累计 attempt 从 7 延续到 8，没有按新请求重置。
+- SSE `tool.completed/tool.failed` 携带 `attempts`，`budget.updated` 携带 logical/physical
+  delta，`report.completed` 携带最终两类总数；API 集成测试逐项求和并与最终报告 stats 对齐。
+
+### 测试与评估
+
+- 新增 Graph 集成场景：retryable 首次失败后二次成功为 1 logical/2 physical；
+  non-retryable 仅 1 次；三个并行分支共享 5 次 attempt，得到 3 logical/5 physical，未透支。
+- 首次全量门禁真实发现 12 个旧测试构造器未提供新增必填字段；补齐新契约并增加 physical
+  budget 路由/报告不变量测试后，全量为 223 passed，未删除或放宽原断言。
+- 新评估产物位于 `artifacts/evaluation/batch-c-tool-attempt-budget/`，run ID
+  `evalrun_20260720T093114Z_3cae6bad`：3/3 completed、0 failed；现有准确率与三层
+  Citation 指标保持 1.0，Evidence relevance F1 仍按原口径为 0.5167。
+
+### 全量验收
+
+| 检查 | 结果 |
+| --- | --- |
+| `uv lock --check` | PASS：74 packages |
+| `uv run ruff format --check .` | PASS：110 files |
+| `uv run ruff check .` | PASS |
+| `uv run mypy src tests scripts` | PASS：110 source files |
+| `uv run pytest` | PASS：223 passed in 3.47s |
+| Graph 文档检查 | PASS：`GRAPH_CURRENT.md` current |
+| Learning Guide 生成 | FAIL：既有 IC-P1-07，仍缺 `src/incident_copilot/core/clock.py` 精读链接；属于 Batch D，未跨批修复 |
+| CLI Demo | PASS：probable；7 logical steps / 7 physical attempts；正反证与 rejected hypothesis 完整 |
+| RAG ingest/search | PASS：6 documents / 18 chunks；Top-2 runbook citation 可解析 |
+| API/SSE/HITL Demo | PASS：50 events；waiting_review → accept → completed；初始/恢复 run ID 不同 |
+| 离线 Evaluation | PASS：3/3 completed、0 failed；新产物未复用旧结果 |
+
+Batch C 到此停止，不进入文档与产品边界 Batch D。
 
 ## 简历最终版优化 Batch B — 核心调查正确性（2026-07-20）
 
@@ -455,7 +499,7 @@ uv run pytest tests/unit/rag tests/integration/test_rag_pipeline.py
 - 实现 `parse_incident → build_investigation_plan → Send collect_evidence → aggregate_evidence → generate_hypotheses → verify_hypotheses → judge_evidence → refine/generate_report` 实际图。
 - `dispatch_evidence_collection` 在发送前按剩余工具预算和并发上限选择批次；同一轮返回多个最小作用域 `Send`，聚合后继续发送下一批，计划步骤不会因低并发配置静默丢失。异步栅栏测试只有在 7 个 Provider 调用同时开始后才放行，因此不是基于耗时猜测并行。
 - 研究路由是纯函数，优先处理 deadline、工具、模型调用、估算 Token、充分性和最大轮数；已过期 invocation 不执行工具或外部模型。模型不能返回节点名、修改预算或控制 step/query identity 与 round。
-- 模型调用由 Graph 使用剩余总 deadline 包装；调用前估算输入 Token，校验重试前再次检查累计 usage。`QueryContext.remaining_tool_calls` 同时限制 Registry 的真实 Provider 尝试次数。
+- 模型调用由 Graph 使用剩余总 deadline 包装；调用前估算输入 Token，校验重试前再次检查累计 usage。`QueryContext.remaining_tool_attempts` 限制 Registry 的真实物理尝试次数。
 - 假设验证会过滤不存在的 Evidence 外键并按独立来源降置信度；最终报告只附加 State 中存在的 Evidence ID/Citation，并在错误或预算停止时写明 limitation。受限报告清除未证实 root cause 且置信度不超过 0.55，report 节点本次错误也计入 limitation。
 - 离线装配同时使用 Fixture Provider、Phase 3 `RagKnowledgeProvider` 和 Fake Model；单 Provider 失败不会取消同轮其它分支。
 - 提供完整调查脚本和当前源码 Mermaid 脚本；`GRAPH_CURRENT.md` 由 `draw_mermaid()` 输出生成并由测试逐字符防漂移，没有绘制 Phase 5 的 HITL、checkpoint 或 API。
