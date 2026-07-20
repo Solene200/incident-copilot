@@ -37,9 +37,12 @@
 > [!NOTE]
 > 英文类名通常直接表达职责。例如 `KnowledgeProvider` 可以拆成 **Knowledge（知识）+ Provider（提供者）**, 即“负责提供知识库数据的组件”。看到陌生名称时, 可以先按这种方式拆开理解。
 
-建议直接阅读合并后的完整文档：[IncidentCopilot 中文教学版完整文档](INCIDENT_COPILOT_LEARNING_GUIDE.md)。
+建议根据目标选择入口：
 
-当前目录中的分章文件是完整文档的维护源。修改分章后执行：
+- 系统学习完整项目：[IncidentCopilot 中文教学版完整文档](INCIDENT_COPILOT_LEARNING_GUIDE.md)。
+- 先理解定义再对照源码：[IncidentCopilot 源码解析版](INCIDENT_COPILOT_SOURCE_CODE_GUIDE.md)。
+
+当前目录中的分章文件是两份合并文档的维护源。修改分章后执行：
 
 ```text
 uv run python scripts/build_learning_guide.py
@@ -65,7 +68,7 @@ uv run python scripts/build_learning_guide.py
 14. [常见问题和面试问答](13-faq-and-interview.md)
 15. [术语表](14-glossary.md)
 
-需要直接读代码时, 使用[完整源码阅读索引](core-reading-index.md)进入逐文件源码解读。
+需要直接读代码时, 建议先打开[源码解析版](INCIDENT_COPILOT_SOURCE_CODE_GUIDE.md)理解定义和依赖；熟悉项目后再使用[完整源码阅读索引](core-reading-index.md)快速跳转。
 
 ## 阅读约定
 
