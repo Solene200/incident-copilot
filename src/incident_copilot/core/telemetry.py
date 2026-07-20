@@ -7,9 +7,12 @@ from functools import wraps
 from importlib import import_module
 from typing import ParamSpec, TypeVar
 
+# 保留被装饰异步函数的完整参数类型。
 ParamT = ParamSpec("ParamT")
+# 保留被装饰异步函数的返回值类型。
 ReturnT = TypeVar("ReturnT")
 
+# 控制是否启用可选 OpenTelemetry Span 的环境变量名。
 OTEL_ENABLED_ENV = "INCIDENT_COPILOT_OTEL_ENABLED"
 
 

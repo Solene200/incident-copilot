@@ -17,7 +17,9 @@ from incident_copilot.graph.state import InvestigationState
 class RouteDecision:
     """保存路由目标以及调查停止时可审计的停止原因。"""
 
+    # 代码允许 Graph 跳转到的下一个白名单节点。
     target: RouteTarget
+    # 选择报告路径时对应的停止原因, 继续调查时通常为 None。
     stop_reason: StopReason | None
 
 

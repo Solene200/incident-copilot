@@ -12,6 +12,7 @@ from incident_copilot.rag.schemas import (
     normalize_document_text,
 )
 
+# 识别 Markdown 一到六级标题及其标题文字。
 HEADING_PATTERN = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 
 
@@ -22,7 +23,9 @@ def tokenize(value: str) -> tuple[str, ...]:
 
 @dataclass(frozen=True, slots=True)
 class _Section:
+    # 当前正文所属的 Markdown 标题层级路径。
     path: tuple[str, ...]
+    # 当前标题下、下一个标题前的正文内容。
     body: str
 
 

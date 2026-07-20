@@ -33,7 +33,9 @@ from incident_copilot.investigations.models import (
 )
 from incident_copilot.investigations.repository import InvestigationRepository
 
+# 调查 Service 使用的模块日志记录器。
 logger = logging.getLogger(__name__)
+# 表示后台 Graph 已暂停或结束、当前没有继续运行的任务状态。
 _QUIESCENT_STATUSES = {
     InvestigationStatus.WAITING_REVIEW,
     InvestigationStatus.COMPLETED,

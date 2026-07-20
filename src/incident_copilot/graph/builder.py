@@ -22,6 +22,7 @@ from incident_copilot.graph.schemas import InvestigationOptions, ModelUsage
 from incident_copilot.graph.state import InvestigationState
 from incident_copilot.tools.registry import ToolRegistry
 
+# 已编译调查 Graph 的统一类型: 输入、输出和运行期间都使用 InvestigationState。
 InvestigationGraph = CompiledStateGraph[
     InvestigationState, None, InvestigationState, InvestigationState
 ]

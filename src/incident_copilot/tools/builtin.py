@@ -30,11 +30,17 @@ from incident_copilot.tools.schemas import (
 class ProviderBundle:
     """为每个 Phase 2 Provider 端口提供显式依赖注入。"""
 
+    # 提供日志 Evidence 的 Adapter。
     logs: LogProvider
+    # 提供指标 Evidence 的 Adapter。
     metrics: MetricsProvider
+    # 提供分布式 Trace Evidence 的 Adapter。
     traces: TraceProvider
+    # 提供部署和配置变更 Evidence 的 Adapter。
     changes: ChangeProvider
+    # 提供服务依赖拓扑 Evidence 的 Adapter。
     topology: TopologyProvider
+    # 提供 Runbook 和历史故障 Evidence 的 Adapter。
     knowledge: KnowledgeProvider
 
 

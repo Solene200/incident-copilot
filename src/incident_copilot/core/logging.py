@@ -10,7 +10,9 @@ from typing import Any, Final
 
 from incident_copilot.core.config import LogLevel
 
+# 日志发现敏感值后使用的统一替换文本。
 REDACTED: Final = "***REDACTED***"
+# 被视为敏感信息的完整字段名白名单。
 _SENSITIVE_KEYS: Final = frozenset(
     {
         "api_key",
@@ -22,16 +24,20 @@ _SENSITIVE_KEYS: Final = frozenset(
         "token",
     }
 )
+# 匹配自由文本中 key=value 或 key:value 形式的常见凭据。
 _KEY_VALUE_PATTERN: Final = re.compile(
     r"(?i)([\"']?(?:api[_-]?key|client[_-]?secret|password|secret|"
     r"(?:access|auth|bearer|id|refresh|session)?[_-]?token)[\"']?\s*[=:]\s*[\"']?)"
     r"([^\s,;}\"']+)"
 )
+# 专门匹配 Authorization 请求头中的认证内容。
 _AUTHORIZATION_PATTERN: Final = re.compile(
     r"(?i)([\"']?authorization[\"']?\s*[=:]\s*[\"']?)"
     r"(?:(?:basic|bearer)\s+)?[^\s,;}\"']+"
 )
+# 匹配未包含字段名、只带 Bearer 前缀的 Token。
 _BEARER_PATTERN: Final = re.compile(r"(?i)(bearer\s+)[a-z0-9._~+/=-]+")
+# 标准 LogRecord 自带字段, 用于识别调用方通过 extra 增加的字段。
 _STANDARD_LOG_RECORD_FIELDS: Final = frozenset(logging.makeLogRecord({}).__dict__)
 
 

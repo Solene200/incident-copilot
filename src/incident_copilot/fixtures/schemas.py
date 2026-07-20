@@ -17,8 +17,11 @@ from incident_copilot.domain.incident import IncidentContext
 class FixtureGroundTruth(DomainModel):
     """仅供 Evaluation 使用、与 Agent 可见载荷隔离的真实标签。"""
 
+    # 该离线故障样例预先标注的真实根因。
     root_cause: str = Field(min_length=1, max_length=4_000)
+    # 根据标签应被识别为受影响的服务。
     affected_services: tuple[str, ...] = Field(default_factory=tuple, max_length=20)
+    # 根据标签应与根因相关的 Evidence ID。
     expected_evidence_ids: tuple[str, ...] = Field(default_factory=tuple, max_length=100)
 
     @field_validator("affected_services")
@@ -35,13 +38,21 @@ class FixtureGroundTruth(DomainModel):
 class IncidentFixture(DomainModel):
     """描述一个确定性事故场景的最小版本化 Fixture 文件。"""
 
+    # Fixture JSON 外层结构的版本。
     schema_version: Literal["1.0"] = "1.0"
+    # 便于测试和演示引用的样例名称。
     name: str = Field(min_length=1, max_length=128)
+    # 对该故障场景和主要症状的简短说明。
     description: str = Field(min_length=1, max_length=1_000)
+    # 固定为 False, 防止含敏感数据的 Fixture 通过校验。
     contains_sensitive_data: Literal[False] = False
+    # 本地样例中经过校验的故障上下文。
     incident: IncidentContext
+    # 本地样例提供给各 Fixture Provider 查询的完整证据。
     evidence: tuple[Evidence, ...] = Field(default_factory=tuple, max_length=1_000)
+    # 只供离线 Evaluation 使用、绝不传给 Graph 的真实标签。
     ground_truth: FixtureGroundTruth | None = None
+    # 用于分类和筛选 Fixture 的稳定标签。
     tags: tuple[str, ...] = Field(default_factory=tuple, max_length=20)
 
     @field_validator("tags")

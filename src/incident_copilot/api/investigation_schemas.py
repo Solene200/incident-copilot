@@ -26,13 +26,21 @@ from incident_copilot.investigations.models import InvestigationRecord, Investig
 class CreateInvestigationRequest(ApiModel):
     """经过校验的用户调查范围和有界执行策略。"""
 
+    # 用户对故障现象和调查目标的原始描述。
     query: str = Field(min_length=1, max_length=10_000)
+    # 本次调查允许涉及的服务名称集合。
     services: tuple[str, ...] = Field(min_length=1, max_length=20)
+    # 调查时间窗口的起点, 必须携带时区。
     start_time: AwareDatetime
+    # 调查时间窗口的终点, 必须晚于 start_time。
     end_time: AwareDatetime
+    # 用户已经观察到的故障症状, 例如错误率上升。
     symptoms: tuple[str, ...] = Field(default_factory=tuple, max_length=50)
+    # 故障严重程度, 未提供时为 unknown。
     severity: Severity = Severity.UNKNOWN
+    # 故障发生的部署环境。
     environment: Environment = Environment.UNKNOWN
+    # 调查轮数、调用次数和超时等受控执行预算。
     options: InvestigationOptions = Field(default_factory=InvestigationOptions)
 
     @field_validator("services")
@@ -83,18 +91,31 @@ class ResumeInvestigationRequest(HumanFeedback):
 class InvestigationResponse(ApiModel):
     """不包含 Graph checkpoint 原始值的公开任务投影。"""
 
+    # 公开响应结构的版本, 便于以后兼容演进。
     schema_version: str = "1.0"
+    # API 调查任务的唯一标识。
     investigation_id: str
+    # 被调查故障事件的唯一标识。
     incident_id: str
+    # LangGraph Checkpoint 使用的稳定线程标识。
     thread_id: str
+    # 当前这次 Graph 运行的关联标识。
     run_id: str
+    # 调查任务对外可见的生命周期状态。
     status: InvestigationStatus
+    # 是否正暂停并等待人工审核。
     review_required: bool
+    # 暂停时展示给审核人的安全审核请求。
     review_request: HumanReviewRequest | None
+    # 调查完成后生成的结构化故障报告。
     report: IncidentReport | None
+    # 调查失败时可以安全公开的简短错误信息。
     error_message: str | None
+    # 调查任务创建时间。
     created_at: AwareDatetime
+    # 调查任务最近一次状态更新时间。
     updated_at: AwareDatetime
+    # 本次响应是否来自幂等键命中的已有任务。
     replayed: bool = False
 
     @classmethod

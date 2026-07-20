@@ -8,7 +8,9 @@ from pydantic import ValidationError
 
 from incident_copilot.rag.schemas import KnowledgeDocument, content_sha256
 
+# 知识 Markdown 中 TOML 元数据的开始和结束分隔符。
 FRONTMATTER_DELIMITER = "+++"
+# 单份知识文档允许读取的最大字节数。
 MAX_KNOWLEDGE_FILE_BYTES = 1_000_000
 
 

@@ -22,7 +22,9 @@ from incident_copilot.core.exceptions import DomainValidationError
 from incident_copilot.investigations.models import InvestigationEvent, InvestigationStatus
 from incident_copilot.investigations.service import InvestigationService
 
+# 调查 API 的版本化路由集合, 最终挂载在 Settings.api_prefix 下。
 router = APIRouter(prefix="/v1/investigations", tags=["investigations"])
+# SSE 遇到这些任务状态后停止等待更多 Graph 事件。
 _STREAM_END_STATUSES = {
     InvestigationStatus.WAITING_REVIEW,
     InvestigationStatus.COMPLETED,

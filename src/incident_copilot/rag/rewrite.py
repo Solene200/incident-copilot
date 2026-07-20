@@ -7,6 +7,7 @@ from typing import ClassVar
 class QueryRewriter:
     """不调用 LLM,只展开经过审核的小型别名表。"""
 
+    # 中文短语出现时追加的已审核英文检索别名。
     _phrase_expansions: ClassVar[dict[str, str]] = {
         "连接池": "connection pool database",
         "数据库": "database db postgres",
@@ -14,6 +15,7 @@ class QueryRewriter:
         "支付服务": "payment-service checkout",
         "历史故障": "historical incident",
     }
+    # 单个英文 Token 出现时追加的同义词和相关词。
     _token_expansions: ClassVar[dict[str, tuple[str, ...]]] = {
         "db": ("database", "postgres"),
         "postgresql": ("postgres", "database"),

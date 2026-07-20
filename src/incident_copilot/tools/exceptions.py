@@ -6,12 +6,12 @@ from enum import StrEnum
 class ProviderErrorCategory(StrEnum):
     """Provider Adapter 和工具调用方共享的稳定失败类别。"""
 
-    INVALID_QUERY = "invalid_query"
-    TIMEOUT = "timeout"
-    UNAVAILABLE = "unavailable"
-    RATE_LIMITED = "rate_limited"
-    MALFORMED_RESPONSE = "malformed_response"
-    INTERNAL = "internal"
+    INVALID_QUERY = "invalid_query"  # 查询语义或白名单参数无效, 不应重试。
+    TIMEOUT = "timeout"  # Provider 未在截止时间内返回, 可以有限重试。
+    UNAVAILABLE = "unavailable"  # Provider 暂时不可访问, 可以有限重试。
+    RATE_LIMITED = "rate_limited"  # Provider 触发限流, 可以有限重试。
+    MALFORMED_RESPONSE = "malformed_response"  # 响应违反契约, 原样重试通常无效。
+    INTERNAL = "internal"  # Provider 内部未分类错误。
 
 
 class ProviderError(Exception):

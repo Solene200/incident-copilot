@@ -28,6 +28,7 @@ from incident_copilot.graph.schemas import (
     StopReason,
 )
 
+# Reducer 处理的 Pydantic 模型泛型类型。
 ItemT = TypeVar("ItemT", bound=BaseModel)
 
 
@@ -147,32 +148,61 @@ class InvestigationState(TypedDict, total=False):
     ``completed_steps/evidence/errors`` 和计数、usage 字段则按上方 reducer 合并。
     """
 
+    # 规范化后的故障输入, 是所有调查节点的共同起点。
     incident: IncidentContext
+    # 当前研究轮次正在执行的调查计划。
     investigation_plan: InvestigationPlan
+    # 本轮尚未调度完成的工具步骤。
     pending_steps: tuple[InvestigationStep, ...]
+    # Send 分支当前负责执行的单个工具步骤。
     current_step: InvestigationStep
+    # 已终止步骤的有界集合, 并行分支按 step_id 合并。
     completed_steps: Annotated[tuple[StepResult, ...], merge_step_results]
+    # 已收集的轻量证据引用, 并行分支按 evidence_id 合并。
     evidence: Annotated[tuple[EvidenceRef, ...], merge_evidence]
+    # 当前版本的根因假设集合, 验证节点会整体替换。
     hypotheses: tuple[Hypothesis, ...]
+    # 当前证据是否足够支撑报告。
     evidence_sufficient: bool
+    # 证据充分性判断的解释。
     sufficiency_reason: str
+    # 下一轮需要验证的问题集合。
     next_investigation_queries: tuple[VerificationQuery, ...]
+    # 当前研究轮次, 从 1 开始。
     research_round: int
+    # 允许执行的最大研究轮数。
     max_research_rounds: int
+    # 整次调查允许的工具调用总数。
     max_tool_calls: int
+    # 一个批次允许并行执行的最大工具数。
     max_parallel_tools: int
+    # 工具调用累计增量, 并行分支通过 add_count 求和。
     tool_call_count: Annotated[int, add_count]
+    # 成功工具调用累计增量。
     tool_success_count: Annotated[int, add_count]
+    # 失败工具调用累计增量。
     tool_failure_count: Annotated[int, add_count]
+    # 整次调查允许的模型调用总数。
     max_model_calls: int
+    # 模型调用累计增量。
     model_call_count: Annotated[int, add_count]
+    # 整次调查允许的输入输出 Token 估算总数。
     max_estimated_tokens: int
+    # 模型 Token 用量累计值, 并行更新通过 add_usage 合并。
     model_usage: Annotated[ModelUsage, add_usage]
+    # Graph 调查开始时间。
     started_at: datetime
+    # 整次调查必须停止的绝对截止时间。
     deadline_at: datetime
+    # 是否已经检测到超过截止时间。
     deadline_exceeded: bool
+    # 已脱敏错误的有界集合, 并行分支按 error_id 合并。
     errors: Annotated[tuple[InvestigationError, ...], merge_errors]
+    # 调查循环最终停止的明确原因。
     stop_reason: StopReason | None
+    # 报告节点生成的最终结构化故障报告。
     final_report: IncidentReport
+    # 人工恢复时提交的严格反馈载荷。
     human_feedback: HumanFeedback
+    # 人工审核是否已经接受并完成。
     review_completed: bool

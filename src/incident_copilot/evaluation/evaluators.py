@@ -21,17 +21,22 @@ from incident_copilot.evaluation.schemas import (
     ToolArgumentMetrics,
 )
 
+# 集合指标函数接收的字符串子类型, 用于保留输入元素的具体类型。
 ItemT = TypeVar("ItemT", bound=str)
 
 
+# 故障类型机器标签及其可在根因文本中识别的英文关键词。
 FAILURE_TYPE_PATTERNS: Mapping[str, tuple[str, ...]] = {
+    # 数据库连接池耗尽: 可用连接不足或获取连接超时。
     "database_connection_pool_exhaustion": (
         "connection pool",
         "pool saturat",
         "connection acquisition",
         "max_connections",
     ),
+    # DNS 配置错误: 域名解析器、名称查询或查询超时异常。
     "dns_misconfiguration": ("dns", "resolver", "name lookup", "lookup timeout"),
+    # 缓存配置回退: TTL 等配置变化导致命中率下降和后端读取放大。
     "cache_configuration_regression": (
         "cache ttl",
         "cache miss",

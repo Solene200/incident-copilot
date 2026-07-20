@@ -26,8 +26,11 @@ from incident_copilot.tools.exceptions import (
 )
 from incident_copilot.tools.schemas import QueryContext, QueryMetricsInput
 
+# 写入错误、日志和 Evidence 的稳定 Provider 名称。
 PROVIDER_NAME = "prometheus-http"
+# 单次 Prometheus HTTP 响应允许读取的最大字节数。
 MAX_RESPONSE_BYTES = 1_000_000
+# 单条时间序列允许包含的最大采样点数。
 MAX_POINTS_PER_SERIES = 240
 
 
@@ -35,7 +38,9 @@ MAX_POINTS_PER_SERIES = 240
 class HttpResponse:
     """让 Adapter 不依赖 HTTP SDK 的小型传输响应。"""
 
+    # HTTP 响应状态码, 例如 200 或 429。
     status_code: int
+    # 受到大小限制的原始响应体字节。
     body: bytes
 
 
@@ -83,33 +88,46 @@ class UrllibPrometheusTransport:
 
 
 class _PrometheusSeries(BaseModel):
+    # 忽略 Prometheus 额外字段, 并让校验后的响应对象不可修改。
     model_config = ConfigDict(extra="ignore", frozen=True)
 
+    # Prometheus 返回的标签字典, 必须包含请求服务。
     metric: dict[str, str]
+    # 按时间递增的时间戳与字符串数值序列。
     values: tuple[tuple[float, str], ...]
 
 
 class _PrometheusData(BaseModel):
+    # 忽略 Prometheus 额外字段, 并让校验后的响应对象不可修改。
     model_config = ConfigDict(extra="ignore", frozen=True)
 
+    # 范围查询只接受 matrix 时间序列响应。
     result_type: Literal["matrix"] = Field(alias="resultType")
+    # Prometheus 返回的全部时间序列。
     result: tuple[_PrometheusSeries, ...]
 
 
 class _PrometheusEnvelope(BaseModel):
+    # 忽略 Prometheus 额外字段, 并让校验后的响应对象不可修改。
     model_config = ConfigDict(extra="ignore", frozen=True)
 
+    # Provider 只接受明确成功的 Prometheus 响应。
     status: Literal["success"]
+    # 成功响应中的 matrix 数据对象。
     data: _PrometheusData
 
 
 @dataclass(frozen=True, slots=True)
 class _MetricMapping:
+    # 白名单领域指标对应的真实 Prometheus 指标名。
     prometheus_name: str
+    # 指标数值的展示单位, 例如 ratio。
     unit: str
+    # 该指标允许调用方选择的聚合方式。
     supported_aggregations: frozenset[str]
 
 
+# 领域指标名到安全 Prometheus 查询信息的固定白名单。
 METRIC_MAPPINGS: Mapping[str, _MetricMapping] = {
     "db.pool.utilization": _MetricMapping(
         prometheus_name="incident_demo_db_pool_utilization_ratio",

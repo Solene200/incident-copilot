@@ -39,6 +39,7 @@ from incident_copilot.rag.bootstrap import build_fixture_retriever
 from incident_copilot.rag.schemas import MetadataFilter, SearchQuery
 from incident_copilot.tools.providers.fixture import FixtureProvider
 
+# 根因关键词召回率达到 75% 时, 才把本次根因判断记为正确。
 ROOT_CAUSE_ACCURACY_THRESHOLD = 0.75
 
 

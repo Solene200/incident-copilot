@@ -16,12 +16,14 @@ def require_timezone(value: datetime) -> datetime:
     return value
 
 
+# 所有领域时间字段共用的“必须携带时区”类型。
 AwareDatetime = Annotated[datetime, AfterValidator(require_timezone)]
 
 
 class DomainModel(BaseModel):
     """经过校验的领域值使用的严格基类。"""
 
+    # 拒绝未知字段、创建后不可修改, 并自动清理字符串两端空白。
     model_config = ConfigDict(
         extra="forbid",
         frozen=True,
@@ -32,58 +34,58 @@ class DomainModel(BaseModel):
 class Severity(StrEnum):
     """不依赖具体可观测性厂商的事故严重程度。"""
 
-    UNKNOWN = "unknown"
-    SEV1 = "sev1"
-    SEV2 = "sev2"
-    SEV3 = "sev3"
-    SEV4 = "sev4"
+    UNKNOWN = "unknown"  # 调用方没有提供明确严重程度。
+    SEV1 = "sev1"  # 最高等级的关键业务故障。
+    SEV2 = "sev2"  # 影响较大但未达到最高等级的故障。
+    SEV3 = "sev3"  # 中等影响、需要及时处理的故障。
+    SEV4 = "sev4"  # 影响较低的普通故障或异常。
 
 
 class Environment(StrEnum):
     """事故信息所报告的部署环境。"""
 
-    PRODUCTION = "production"
-    STAGING = "staging"
-    DEVELOPMENT = "development"
-    UNKNOWN = "unknown"
+    PRODUCTION = "production"  # 面向真实用户的生产环境。
+    STAGING = "staging"  # 上线前的预发布验证环境。
+    DEVELOPMENT = "development"  # 本地或共享开发环境。
+    UNKNOWN = "unknown"  # 故障来源没有提供环境信息。
 
 
 class SourceType(StrEnum):
     """规范化的证据来源类别。"""
 
-    LOG = "log"
-    METRIC = "metric"
-    TRACE = "trace"
-    CHANGE = "change"
-    TOPOLOGY = "topology"
-    KNOWLEDGE = "knowledge"
+    LOG = "log"  # 应用或基础设施产生的日志证据。
+    METRIC = "metric"  # 错误率、延迟和资源利用率等指标证据。
+    TRACE = "trace"  # 一个请求跨服务传播的调用链证据。
+    CHANGE = "change"  # 部署、配置和基础设施变更证据。
+    TOPOLOGY = "topology"  # 服务之间依赖关系的拓扑证据。
+    KNOWLEDGE = "knowledge"  # Runbook、服务文档或历史故障知识。
 
 
 class HypothesisStatus(StrEnum):
     """根因假设的生命周期状态。"""
 
-    PROPOSED = "proposed"
-    INVESTIGATING = "investigating"
-    SUPPORTED = "supported"
-    REJECTED = "rejected"
-    INCONCLUSIVE = "inconclusive"
+    PROPOSED = "proposed"  # 刚生成、尚未验证的根因假设。
+    INVESTIGATING = "investigating"  # 正在收集更多证据验证。
+    SUPPORTED = "supported"  # 已有足够支持证据的假设。
+    REJECTED = "rejected"  # 已被反证排除的假设。
+    INCONCLUSIVE = "inconclusive"  # 当前证据无法支持也无法排除。
 
 
 class ReportDisposition(StrEnum):
     """报告陈述根因时采用的确定程度。"""
 
-    CONFIRMED = "confirmed"
-    PROBABLE = "probable"
-    INCONCLUSIVE = "inconclusive"
+    CONFIRMED = "confirmed"  # 证据足以确认根因。
+    PROBABLE = "probable"  # 根因很可能成立, 但仍有不确定性。
+    INCONCLUSIVE = "inconclusive"  # 预算内无法得出可靠根因。
 
 
 class RiskLevel(StrEnum):
     """修复建议附带的操作风险等级。"""
 
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
+    LOW = "low"  # 风险较低的只读验证或安全操作。
+    MEDIUM = "medium"  # 可能影响局部服务, 需要谨慎执行。
+    HIGH = "high"  # 可能明显影响线上业务, 必须人工确认。
+    CRITICAL = "critical"  # 可能造成重大中断, 必须严格审核。
 
 
 def normalize_services(values: Sequence[str]) -> tuple[str, ...]:

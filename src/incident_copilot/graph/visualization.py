@@ -6,7 +6,9 @@ from langgraph.checkpoint.memory import InMemorySaver
 
 from incident_copilot.graph.bootstrap import build_offline_investigation_graph
 
+# 文档中自动生成 Mermaid 代码块的开始标记。
 FENCE_START = "```mermaid\n"
+# 文档中 Mermaid 代码块的结束标记。
 FENCE_END = "\n```"
 
 

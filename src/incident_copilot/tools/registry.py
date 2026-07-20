@@ -39,9 +39,12 @@ from incident_copilot.tools.schemas import (
     ToolInput,
 )
 
+# ToolRegistry 使用的模块日志记录器。
 logger = logging.getLogger(__name__)
 
+# 所有工具输入都必须继承的泛型类型变量。
 InputT = TypeVar("InputT", bound=ToolInput)
+# 工具处理器的统一异步函数签名。
 ToolHandler = Callable[[InputT, QueryContext], Awaitable[Sequence[Evidence]]]
 
 
@@ -53,11 +56,17 @@ class ToolDefinition(Generic[InputT]):
     Graph 计划只能引用这里存在的 name。
     """
 
+    # Graph 计划引用的稳定白名单工具名。
     name: str
+    # 调用 Provider 前验证 arguments 的 Pydantic 模型类型。
     input_model: type[InputT]
+    # 真正把已校验输入传给 Provider 的异步函数。
     handler: ToolHandler[InputT]
+    # 该工具唯一允许返回的 Evidence 来源类别。
     expected_sources: frozenset[SourceType]
+    # 单次尝试允许等待的最大秒数。
     timeout_seconds: float = 2.0
+    # 第一次失败后最多允许追加的重试次数。
     max_retries: int = 1
 
     def __post_init__(self) -> None:

@@ -56,7 +56,9 @@ from incident_copilot.tools.exceptions import ToolError, ToolExecutionError
 from incident_copilot.tools.registry import ToolRegistry
 from incident_copilot.tools.schemas import QueryContext
 
+# 结构化模型调用返回的任务专属 Pydantic 类型。
 OutputT = TypeVar("OutputT", bound=BaseModel)
+# 返回当前时间的可注入函数类型, 测试使用固定时钟。
 Clock = Callable[[], datetime]
 
 
@@ -69,10 +71,15 @@ def utc_now() -> datetime:
 class StructuredCall(Generic[OutputT]):
     """保存校验后的模型值和可由 Reducer 安全合并的节点增量。"""
 
+    # 通过任务专属 Schema 校验后的模型值, 降级失败时为 None。
     value: OutputT | None
+    # 本次 helper 实际消耗的模型调用次数。
     call_count: int
+    # 本次 helper 累计的输入输出 Token 用量。
     usage: ModelUsage
+    # 校验重试或 Provider 失败产生的安全错误。
     errors: tuple[InvestigationError, ...]
+    # 因模型预算耗尽而必须停止时的原因。
     stop_reason: StopReason | None = None
 
 
