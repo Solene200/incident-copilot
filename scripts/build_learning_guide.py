@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 LEARNING_DIR = ROOT / "docs" / "learning"
 OUTPUT_PATH = LEARNING_DIR / "INCIDENT_COPILOT_LEARNING_GUIDE.md"
+SOURCE_ROOT = ROOT / "src" / "incident_copilot"
 
 CHAPTER_ICONS = {
     "learning-home": "🏠",
@@ -35,7 +36,7 @@ TOC_GROUPS = (
     ("🧭 导学与项目主线", {"learning-home", *(f"chapter-{index:02d}" for index in range(4))}),
     ("🧠 核心调查机制", {f"chapter-{index:02d}" for index in range(4, 9)}),
     ("⚙️ 服务化、评估与实践", {f"chapter-{index:02d}" for index in range(9, 15)}),
-    ("🧩 核心源码精读", {"core-reading-index"}),
+    ("🧩 全部源码精读", {"core-reading-index"}),
 )
 
 
@@ -56,7 +57,7 @@ CHAPTERS = (
     Chapter(LEARNING_DIR / "core-reading-index.md", "core-reading-index"),
     *(
         Chapter(path, f"walkthrough-{path.name[:2]}")
-        for path in sorted((LEARNING_DIR / "code-walkthrough").glob("[0-1][0-9]-*.md"))
+        for path in sorted((LEARNING_DIR / "code-walkthrough").glob("[0-9][0-9]-*.md"))
     ),
 )
 
@@ -121,7 +122,7 @@ def _shift_headings(markdown: str, *, icon: str) -> str:
 def _toc_group(anchor: str) -> str:
     """返回章节所属的目录分组, 源码精读文件统一归入最后一组。"""
     if anchor.startswith("walkthrough-"):
-        return "🧩 核心源码精读"
+        return "🧩 全部源码精读"
     for title, anchors in TOC_GROUPS:
         if anchor in anchors:
             return title
@@ -135,8 +136,34 @@ def _chapter_icon(anchor: str) -> str:
     return CHAPTER_ICONS[anchor]
 
 
+def _validate_source_coverage() -> None:
+    """确保每个应用源码文件都能从至少一份精读文档直接打开。"""
+    expected = {path.resolve() for path in SOURCE_ROOT.rglob("*.py")}
+    linked: set[Path] = set()
+    walkthrough_dir = LEARNING_DIR / "code-walkthrough"
+    for document_path in sorted(walkthrough_dir.glob("[0-9][0-9]-*.md")):
+        markdown = document_path.read_text(encoding="utf-8")
+        for _, raw_target in MARKDOWN_LINK.findall(markdown):
+            path_text = raw_target.strip("<>").partition("#")[0]
+            if not path_text or raw_target.startswith(("http://", "https://", "mailto:")):
+                continue
+            target = (document_path.parent / path_text).resolve()
+            if target.suffix == ".py" and target.is_relative_to(SOURCE_ROOT.resolve()):
+                linked.add(target)
+
+    missing = sorted(expected - linked)
+    stale = sorted(linked - expected)
+    if missing or stale:
+        details = [
+            *(f"缺少源码精读链接: {path.relative_to(ROOT).as_posix()}" for path in missing),
+            *(f"源码精读链接已失效: {path.relative_to(ROOT).as_posix()}" for path in stale),
+        ]
+        raise ValueError("源码精读覆盖检查失败\n" + "\n".join(details))
+
+
 def build_learning_guide() -> str:
     """按既定学习顺序生成完整教学文档。"""
+    _validate_source_coverage()
     anchors = {chapter.path.resolve(): chapter.anchor for chapter in CHAPTERS}
     source_documents = [chapter.path.read_text(encoding="utf-8") for chapter in CHAPTERS]
     titles = [_title(markdown) for markdown in source_documents]
@@ -162,6 +189,7 @@ def build_learning_guide() -> str:
         "> [!TIP]",
         "> 英文术语不熟悉时先看 **[📘 常见英文速查](#english-terms)**; 第一次系统阅读建议从 "
         "**🧭 学习路线** 开始。",
+        "> 想直接对照源码学习, 可以进入 **[🧩 完整源码阅读索引](#core-reading-index)**。",
         "",
         "> [!NOTE]",
         "> 本文档由分章教学文件自动合并生成。需要维护内容时请修改分章文件, 然后运行",

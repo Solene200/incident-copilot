@@ -139,4 +139,4 @@ return tracing_context(
 | 类比 | 离线 ML test harness + regression report generator |
 | 修改风险 | 标签提前进入 filter/context 会数据泄漏；丢弃失败会选择偏差 |
 
-返回[核心源码阅读索引](../core-reading-index.md)或[学习中心](../README.md)。
+返回[完整源码阅读索引](../core-reading-index.md)或[学习中心](../README.md)。

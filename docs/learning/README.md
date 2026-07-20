@@ -65,7 +65,7 @@ uv run python scripts/build_learning_guide.py
 14. [常见问题和面试问答](13-faq-and-interview.md)
 15. [术语表](14-glossary.md)
 
-需要直接读代码时, 使用[核心源码阅读索引](core-reading-index.md)进入逐文件源码解读。
+需要直接读代码时, 使用[完整源码阅读索引](core-reading-index.md)进入逐文件源码解读。
 
 ## 阅读约定
 
