@@ -10,7 +10,11 @@ from incident_copilot.domain.common import (
     unique_evidence_ids,
     unique_non_empty,
 )
-from incident_copilot.domain.evidence import Evidence
+from incident_copilot.domain.evidence import (
+    CONTENT_HASH_ALGORITHM,
+    ContentHashAlgorithm,
+    Evidence,
+)
 from incident_copilot.domain.incident import IncidentContext
 
 
@@ -40,6 +44,8 @@ class IncidentFixture(DomainModel):
 
     # Fixture JSON 外层结构的版本。
     schema_version: Literal["1.0"] = "1.0"
+    # 全部 Evidence 使用的版本化 canonical content hashing 契约。
+    content_hash_algorithm: ContentHashAlgorithm = CONTENT_HASH_ALGORITHM
     # 便于测试和演示引用的样例名称。
     name: str = Field(min_length=1, max_length=128)
     # 对该故障场景和主要症状的简短说明。
@@ -62,6 +68,10 @@ class IncidentFixture(DomainModel):
 
     @model_validator(mode="after")
     def validate_unique_evidence(self) -> Self:
+        if any(
+            item.content_hash_algorithm != self.content_hash_algorithm for item in self.evidence
+        ):
+            raise ValueError("fixture evidence must use the declared content hash algorithm")
         evidence_ids = [item.evidence_id for item in self.evidence]
         if len(evidence_ids) != len(set(evidence_ids)):
             raise ValueError("fixture evidence ids must be unique")

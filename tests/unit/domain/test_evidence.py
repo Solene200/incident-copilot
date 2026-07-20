@@ -3,11 +3,20 @@
 from datetime import UTC, datetime
 
 import pytest
-from pydantic import ValidationError
+from pydantic import JsonValue, ValidationError
 
-from incident_copilot.domain import Citation, Evidence, EvidenceRef, SourceType
+from incident_copilot.domain import (
+    CONTENT_HASH_ALGORITHM,
+    Citation,
+    Evidence,
+    EvidenceRef,
+    SourceType,
+    canonical_content_bytes,
+    content_sha256,
+)
 
-CONTENT_HASH = "a" * 64
+CONTENT = "sanitized connection timeout"
+CONTENT_HASH = content_sha256(CONTENT)
 
 
 def make_citation(**overrides: object) -> Citation:
@@ -29,7 +38,7 @@ def make_evidence(**overrides: object) -> Evidence:
         "source_type": SourceType.LOG,
         "source_name": "fixture-logs",
         "title": "Connection timeout",
-        "content": "sanitized connection timeout",
+        "content": CONTENT,
         "summary": "Database connection acquisition timed out.",
         "timestamp": datetime(2026, 7, 18, 2, 25, tzinfo=UTC),
         "service": "PAYMENT-SERVICE",
@@ -37,7 +46,6 @@ def make_evidence(**overrides: object) -> Evidence:
         "reliability_score": 0.8,
         "metadata": {"fixture": True},
         "citation": make_citation(),
-        "content_hash": CONTENT_HASH,
         "collected_at": datetime(2026, 7, 18, 2, 45, tzinfo=UTC),
     }
     values.update(overrides)
@@ -73,6 +81,37 @@ def test_evidence_rejects_scores_outside_unit_interval(field: str) -> None:
 def test_evidence_rejects_mismatched_citation_hash() -> None:
     with pytest.raises(ValidationError, match="hashes must match"):
         make_evidence(citation=make_citation(content_hash="b" * 64))
+
+
+def test_evidence_computes_hash_for_nested_untrusted_payload() -> None:
+    citation = make_citation().model_dump()
+    citation.pop("content_hash")
+    payload = make_evidence().model_dump()
+    payload.pop("content_hash")
+    payload["citation"] = citation
+
+    evidence = Evidence.model_validate(payload)
+
+    assert evidence.content_hash_algorithm == CONTENT_HASH_ALGORITHM
+    assert evidence.content_hash == CONTENT_HASH
+    assert evidence.citation.content_hash == CONTENT_HASH
+
+
+def test_evidence_rejects_tampered_content_or_explicit_hash() -> None:
+    with pytest.raises(ValidationError, match="hashes must match"):
+        make_evidence(content="tampered content")
+    with pytest.raises(ValidationError, match="does not match canonical content"):
+        make_evidence(content_hash="b" * 64)
+
+
+def test_canonical_content_v1_is_stable_and_rejects_unknown_version() -> None:
+    left: JsonValue = {"message": "连接超时", "count": 2}
+    right: JsonValue = {"count": 2, "message": "连接超时"}
+
+    assert canonical_content_bytes(left) == canonical_content_bytes(right)
+    assert content_sha256(left) == content_sha256(right)
+    with pytest.raises(ValueError, match="unsupported content hash algorithm"):
+        canonical_content_bytes(left, algorithm="sha256-future-v2")  # type: ignore[arg-type]
 
 
 def test_citation_rejects_unsafe_scheme() -> None:

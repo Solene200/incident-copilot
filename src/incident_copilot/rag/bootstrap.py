@@ -27,7 +27,7 @@ def build_fixture_retriever(
     """使用确定性组件构造完整离线 RAG 管线并摄取知识。"""
     embedding = FakeEmbedding(dimension=64)
     retriever = HybridRetriever(
-        splitter=MarkdownSplitter(max_tokens=120, overlap_tokens=20),
+        splitter=MarkdownSplitter(),
         embedding=embedding,
         lexical_index=BM25Index(),
         vector_store=InMemoryVectorStore(dimension=embedding.dimension),

@@ -60,7 +60,9 @@ flowchart LR
 | 工具选择 | 工具名集合 F1 |
 | 工具参数 | 只比较标签指定字段, 同名多轮调用取最佳匹配 |
 | Evidence relevance | supporting Evidence ID 集合 F1 |
-| Citation correctness | ID、URI、locator、hash 精确一致 |
+| Citation reference consistency | EvidenceRef 与报告 Citation 的 ID、URI、locator、算法和 hash 一致 |
+| Citation locator resolvability | Repository resolver 能按 locator 取回 fixture/knowledge 内容 |
+| Citation content integrity | 对成功解析的内容按版本化 canonical hashing 复算 |
 | 根因准确率 | 版本化根因词项覆盖阈值 |
 | 调查资源 | 轮数、工具、模型、wall-clock、Token |
 
@@ -72,7 +74,7 @@ flowchart LR
 
 - 某个失败样例。
 - 某类工具参数持续错误。
-- Citation 分母为空。
+- 任一 Citation 验证层的分母为空。
 - 某样例使用异常多轮次。
 
 Runner 因此先写逐样例结果, 再写 summary。单样例异常会成为 `SampleStatus.FAILED`, 仍计入 sample/failed count。

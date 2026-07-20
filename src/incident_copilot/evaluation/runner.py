@@ -13,7 +13,12 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any, cast
 
-from incident_copilot.evaluation.dataset import resolve_fixture_path
+from incident_copilot.domain.evidence import EvidenceResolver
+from incident_copilot.evaluation.dataset import (
+    RepositoryEvidenceResolver,
+    repository_root,
+    resolve_fixture_path,
+)
 from incident_copilot.evaluation.evaluators import (
     aggregate_metrics,
     citation_metrics,
@@ -50,9 +55,16 @@ class OfflineEvaluationRunner:
     关闭, 只有调用者显式启用时才允许外部发送 trace。
     """
 
-    def __init__(self, *, enable_langsmith: bool = False, project_name: str | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        enable_langsmith: bool = False,
+        project_name: str | None = None,
+        evidence_resolver: EvidenceResolver | None = None,
+    ) -> None:
         self._enable_langsmith = enable_langsmith
         self._project_name = project_name or "incident-copilot-offline-evaluation"
+        self._evidence_resolver = evidence_resolver or RepositoryEvidenceResolver(repository_root())
 
     async def run(self, dataset: EvaluationDataset, output_dir: Path) -> EvaluationSummary:
         """评估所有样例,保留失败结果并写入原始和聚合产物。
@@ -107,6 +119,10 @@ class OfflineEvaluationRunner:
                 "not a benchmark.",
                 "Fake Model token counts are deterministic character-based estimates.",
                 "Root-cause accuracy uses versioned lexical indicators, not an LLM-as-judge.",
+                "Citation reference and locator metrics use all report EvidenceRefs; content "
+                "integrity uses only successfully resolved citations.",
+                "The offline resolver covers immutable repository fixture and knowledge sources, "
+                "not live HTTP citations.",
                 "Cost is unavailable because no provider pricing was configured.",
             ),
         )
@@ -188,7 +204,7 @@ class OfflineEvaluationRunner:
             evidence_relevance=set_metrics(
                 sample.ground_truth.relevant_evidence_ids, actual_evidence_ids
             ),
-            citations=citation_metrics(report),
+            citations=citation_metrics(report, self._evidence_resolver),
             root_cause_term_recall=root_recall,
             root_cause_accurate=root_recall >= ROOT_CAUSE_ACCURACY_THRESHOLD,
             actual_tool_calls=actual_calls,
@@ -265,7 +281,11 @@ class OfflineEvaluationRunner:
                 f"| Tool selection F1 | {render(metrics.tool_selection_f1)} |",
                 f"| Tool argument accuracy | {render(metrics.tool_argument_accuracy)} |",
                 f"| Evidence relevance F1 | {render(metrics.evidence_relevance_f1)} |",
-                f"| Citation correctness | {render(metrics.citation_correctness)} |",
+                "| Citation reference consistency | "
+                f"{render(metrics.citation_reference_consistency)} |",
+                "| Citation locator resolvability | "
+                f"{render(metrics.citation_locator_resolvability)} |",
+                f"| Citation content integrity | {render(metrics.citation_content_integrity)} |",
                 f"| Root-cause accuracy | {render(metrics.root_cause_accuracy)} |",
                 f"| Mean research rounds | {render(metrics.mean_research_rounds)} |",
                 f"| Mean tool calls | {render(metrics.mean_tool_calls)} |",

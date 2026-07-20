@@ -105,7 +105,9 @@ root_recall = root_cause_term_recall(
 | Recall@K/MRR | Hybrid retrieval 排名 |
 | 工具选择/参数 | `completed_steps` 重建的真实调用 |
 | Evidence relevance | 报告 supporting Evidence ID |
-| Citation correctness | 报告 Citation 与 EvidenceRef 一致性 |
+| Citation reference consistency | 报告 Citation 与 EvidenceRef 精确一致 |
+| Citation locator resolvability | `RepositoryEvidenceResolver` 能重新取得本地来源 |
+| Citation content integrity | 对已解析内容复算版本化 canonical hash |
 | 根因准确 | 版本化词项 recall 达阈值 0.75 |
 | 轮数/工具/Token | `investigation_stats` |
 | 延迟 | 当前进程 `perf_counter` wall-clock |

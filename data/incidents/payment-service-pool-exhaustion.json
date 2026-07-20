@@ -1,5 +1,6 @@
 {
   "schema_version": "1.0",
+  "content_hash_algorithm": "sha256-canonical-content-v1",
   "name": "payment-service-pool-exhaustion",
   "description": "Sanitized deterministic payment-service incident with supporting, contradicting, and noisy evidence.",
   "contains_sensitive_data": false,
@@ -49,10 +50,8 @@
         "uri": "fixture://incidents/payment-service-pool-exhaustion.json",
         "locator": "evidence[0]",
         "display_name": "payment-service application log",
-        "retrieved_at": "2026-07-18T10:43:00+08:00",
-        "content_hash": "18771ae2d359ede98ad909c34824a746a52e70e5fc9e99332ff837505aa0b319"
+        "retrieved_at": "2026-07-18T10:43:00+08:00"
       },
-      "content_hash": "18771ae2d359ede98ad909c34824a746a52e70e5fc9e99332ff837505aa0b319",
       "collected_at": "2026-07-18T10:43:00+08:00"
     },
     {
@@ -82,10 +81,8 @@
         "uri": "fixture://incidents/payment-service-pool-exhaustion.json",
         "locator": "evidence[1]",
         "display_name": "payment-service request log",
-        "retrieved_at": "2026-07-18T10:43:00+08:00",
-        "content_hash": "2e455528e4a82927b78ac131b97079adbbfd313a68d29d2b145f234d888887ec"
+        "retrieved_at": "2026-07-18T10:43:00+08:00"
       },
-      "content_hash": "2e455528e4a82927b78ac131b97079adbbfd313a68d29d2b145f234d888887ec",
       "collected_at": "2026-07-18T10:43:00+08:00"
     },
     {
@@ -115,10 +112,8 @@
         "uri": "fixture://incidents/payment-service-pool-exhaustion.json",
         "locator": "evidence[2]",
         "display_name": "payment-service noise log",
-        "retrieved_at": "2026-07-18T10:43:00+08:00",
-        "content_hash": "754f5eb80d433d8d129f9488b6769499e7cf8daf54ab6549b2499be6e5190958"
+        "retrieved_at": "2026-07-18T10:43:00+08:00"
       },
-      "content_hash": "754f5eb80d433d8d129f9488b6769499e7cf8daf54ab6549b2499be6e5190958",
       "collected_at": "2026-07-18T10:43:00+08:00"
     },
     {
@@ -153,10 +148,8 @@
         "uri": "fixture://incidents/payment-service-pool-exhaustion.json",
         "locator": "evidence[3].content.points",
         "display_name": "payment-service error-rate metric",
-        "retrieved_at": "2026-07-18T10:43:00+08:00",
-        "content_hash": "c74a880276cc9c2f68970d97d438c820067413a969b52531304a48b9f008a00a"
+        "retrieved_at": "2026-07-18T10:43:00+08:00"
       },
-      "content_hash": "c74a880276cc9c2f68970d97d438c820067413a969b52531304a48b9f008a00a",
       "collected_at": "2026-07-18T10:43:00+08:00"
     },
     {
@@ -188,10 +181,8 @@
         "uri": "fixture://incidents/payment-service-pool-exhaustion.json",
         "locator": "evidence[4].content",
         "display_name": "payment-service DB pool metric",
-        "retrieved_at": "2026-07-18T10:43:00+08:00",
-        "content_hash": "d270e84a655c7c3bdd1e5272629eae81c6e721032bf55502a9f1329ef372df8a"
+        "retrieved_at": "2026-07-18T10:43:00+08:00"
       },
-      "content_hash": "d270e84a655c7c3bdd1e5272629eae81c6e721032bf55502a9f1329ef372df8a",
       "collected_at": "2026-07-18T10:43:00+08:00"
     },
     {
@@ -223,10 +214,8 @@
         "uri": "fixture://incidents/payment-service-pool-exhaustion.json",
         "locator": "evidence[5].content",
         "display_name": "payment-gateway health metric",
-        "retrieved_at": "2026-07-18T10:43:00+08:00",
-        "content_hash": "ef707e1bfe17eca04f0b2b6856e9af6d34700b0db444f53cc6158ffd16706e8a"
+        "retrieved_at": "2026-07-18T10:43:00+08:00"
       },
-      "content_hash": "ef707e1bfe17eca04f0b2b6856e9af6d34700b0db444f53cc6158ffd16706e8a",
       "collected_at": "2026-07-18T10:43:00+08:00"
     },
     {
@@ -260,10 +249,8 @@
         "uri": "fixture://incidents/payment-service-pool-exhaustion.json",
         "locator": "evidence[6].content.spans[1]",
         "display_name": "payment-service timeout trace",
-        "retrieved_at": "2026-07-18T10:43:00+08:00",
-        "content_hash": "e7b5992a04e89d1ff7661a304100466a2a03ad893c347d6b75205b8e8218b2e9"
+        "retrieved_at": "2026-07-18T10:43:00+08:00"
       },
-      "content_hash": "e7b5992a04e89d1ff7661a304100466a2a03ad893c347d6b75205b8e8218b2e9",
       "collected_at": "2026-07-18T10:43:00+08:00"
     },
     {
@@ -295,10 +282,8 @@
         "uri": "fixture://incidents/payment-service-pool-exhaustion.json",
         "locator": "evidence[7]",
         "display_name": "payment-service health trace",
-        "retrieved_at": "2026-07-18T10:43:00+08:00",
-        "content_hash": "dd424222949899d10789fb31a20e8f73520b521f6f29496713ab639b5a3ae3fa"
+        "retrieved_at": "2026-07-18T10:43:00+08:00"
       },
-      "content_hash": "dd424222949899d10789fb31a20e8f73520b521f6f29496713ab639b5a3ae3fa",
       "collected_at": "2026-07-18T10:43:00+08:00"
     },
     {
@@ -330,10 +315,8 @@
         "uri": "fixture://incidents/payment-service-pool-exhaustion.json",
         "locator": "evidence[8].content.configuration_diff",
         "display_name": "payment-service release change",
-        "retrieved_at": "2026-07-18T10:43:00+08:00",
-        "content_hash": "650a0416abcae38cfa92f163c8391736e4280b78f289c09339e788acde60f57a"
+        "retrieved_at": "2026-07-18T10:43:00+08:00"
       },
-      "content_hash": "650a0416abcae38cfa92f163c8391736e4280b78f289c09339e788acde60f57a",
       "collected_at": "2026-07-18T10:43:00+08:00"
     },
     {
@@ -364,10 +347,8 @@
         "uri": "fixture://incidents/payment-service-pool-exhaustion.json",
         "locator": "evidence[9].content.dependencies",
         "display_name": "production service topology snapshot",
-        "retrieved_at": "2026-07-18T10:43:00+08:00",
-        "content_hash": "1be6c39a81f35880a90b186bb1ad8667051a53f072bf44428b49ef4c76c9f6dd"
+        "retrieved_at": "2026-07-18T10:43:00+08:00"
       },
-      "content_hash": "1be6c39a81f35880a90b186bb1ad8667051a53f072bf44428b49ef4c76c9f6dd",
       "collected_at": "2026-07-18T10:43:00+08:00"
     },
     {
@@ -402,10 +383,8 @@
         "uri": "fixture://incidents/payment-service-pool-exhaustion.json",
         "locator": "evidence[10].content.steps",
         "display_name": "payment-service DB pool runbook",
-        "retrieved_at": "2026-07-18T10:43:00+08:00",
-        "content_hash": "3bb0ea63a66bada7094a8f1fb48367623219c3de015236a3ae0cf7df472d83e0"
+        "retrieved_at": "2026-07-18T10:43:00+08:00"
       },
-      "content_hash": "3bb0ea63a66bada7094a8f1fb48367623219c3de015236a3ae0cf7df472d83e0",
       "collected_at": "2026-07-18T10:43:00+08:00"
     },
     {
@@ -435,10 +414,8 @@
         "uri": "fixture://incidents/payment-service-pool-exhaustion.json",
         "locator": "evidence[11].content",
         "display_name": "historical payment-service incident",
-        "retrieved_at": "2026-07-18T10:43:00+08:00",
-        "content_hash": "387d0d6809fead14499b6366cb8a72d8235c0ea02655b8b1c6e6c42bd9abecd8"
+        "retrieved_at": "2026-07-18T10:43:00+08:00"
       },
-      "content_hash": "387d0d6809fead14499b6366cb8a72d8235c0ea02655b8b1c6e6c42bd9abecd8",
       "collected_at": "2026-07-18T10:43:00+08:00"
     }
   ],

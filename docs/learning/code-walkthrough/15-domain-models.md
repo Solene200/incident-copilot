@@ -46,17 +46,20 @@ AwareDatetime = Annotated[datetime, AfterValidator(require_timezone)]
 
 ### `Citation`
 
-字段从“身份”到“定位”依次是 citation ID、URI、locator、展示名、抓取时间和内容哈希。`validate_uri()` 逐层防御：只允许四种 scheme；拒绝 URL 用户名/密码；HTTP 必须有 host；内部 URI 也必须有实际位置。
+字段从“身份”到“定位”依次是 citation ID、URI、locator、展示名、抓取时间、哈希算法版本和内容哈希。`for_content()` 从真实内容统一计算 hash；`validate_uri()` 逐层防御：只允许四种 scheme；拒绝 URL 用户名/密码；HTTP 必须有 host；内部 URI 也必须有实际位置。
+
+`canonical_content_bytes()` 和 `content_sha256()` 定义 `sha256-canonical-content-v1`：字符串直接使用 UTF-8，其他 JSON value 使用稳定 key 顺序与紧凑编码。算法版本进入 Citation/Evidence，未来规则变化不能静默复用旧 hash。
 
 ### `Evidence`
 
-完整 Evidence 包含原始 `content`、摘要、单点或区间时间、服务、相关性/可靠性、metadata、Citation 和哈希。`validate_time_range()` 按顺序确保：
+完整 Evidence 包含原始 `content`、摘要、单点或区间时间、服务、相关性/可靠性、metadata、Citation 和哈希。前置 validator 统一计算缺失 hash 并拒绝显式错误值；最终 validator 按顺序确保：
 
 1. 起止时间必须成对出现。
 2. 起点严格早于终点。
-3. Citation 的内容哈希必须与 Evidence 相同。
+3. Citation 与 Evidence 使用同一算法版本和内容哈希。
+4. 哈希必须与完整 `content` 的 canonical SHA-256 相同。
 
-第三条把“证据内容”和“证据出处”绑定起来，防止报告引用另一份内容。
+后两条把“证据内容”和“证据出处”绑定起来，防止格式正确的占位 hash 或另一份内容进入报告。`EvidenceResolver` Protocol 只定义按 Citation 取回 `JsonValue` 的端口，不让领域层读取文件或网络。
 
 ### `EvidenceRef`
 

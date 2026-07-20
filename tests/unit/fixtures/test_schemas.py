@@ -1,10 +1,12 @@
 """版本化 Fixture 文件测试。"""
 
+import json
 from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
+from incident_copilot.domain.evidence import CONTENT_HASH_ALGORITHM, content_sha256
 from incident_copilot.fixtures import FixtureGroundTruth, IncidentFixture
 
 
@@ -29,3 +31,18 @@ def test_fixture_rejects_ground_truth_reference_to_missing_evidence() -> None:
 
     with pytest.raises(ValidationError, match="missing from fixture"):
         IncidentFixture.model_validate(payload)
+
+
+def test_all_fixtures_declare_hash_version_without_handwritten_hashes() -> None:
+    incident_root = Path(__file__).parents[3] / "data" / "incidents"
+
+    for path in sorted(incident_root.glob("*.json")):
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        assert raw["content_hash_algorithm"] == CONTENT_HASH_ALGORITHM
+        assert all("content_hash" not in item for item in raw["evidence"])
+        assert all("content_hash" not in item["citation"] for item in raw["evidence"])
+
+        fixture = IncidentFixture.model_validate(raw)
+        for evidence in fixture.evidence:
+            assert evidence.content_hash == content_sha256(evidence.content)
+            assert evidence.citation.content_hash == evidence.content_hash

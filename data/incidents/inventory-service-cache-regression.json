@@ -1,5 +1,6 @@
 {
   "schema_version": "1.0",
+  "content_hash_algorithm": "sha256-canonical-content-v1",
   "name": "inventory-service-cache-regression",
   "description": "Sanitized inventory latency caused by a cache TTL configuration regression.",
   "contains_sensitive_data": false,
@@ -30,8 +31,7 @@
       "relevance_score": 0.96,
       "reliability_score": 0.96,
       "metadata": {"environment": "production", "error_code": "CACHE_MISS"},
-      "citation": {"citation_id": "cit_inventory_log_cache_miss", "uri": "fixture://incidents/inventory-service-cache-regression.json", "locator": "evidence[0]", "display_name": "inventory cache log", "retrieved_at": "2026-07-18T12:26:00+08:00", "content_hash": "6666666666666666666666666666666666666666666666666666666666666666"},
-      "content_hash": "6666666666666666666666666666666666666666666666666666666666666666",
+      "citation": {"citation_id": "cit_inventory_log_cache_miss", "uri": "fixture://incidents/inventory-service-cache-regression.json", "locator": "evidence[0]", "display_name": "inventory cache log", "retrieved_at": "2026-07-18T12:26:00+08:00"},
       "collected_at": "2026-07-18T12:26:00+08:00"
     },
     {
@@ -48,8 +48,7 @@
       "relevance_score": 0.82,
       "reliability_score": 0.98,
       "metadata": {"metric_name": "http.server.error_rate", "aggregation": "rate"},
-      "citation": {"citation_id": "cit_inventory_metric_error_rate", "uri": "fixture://incidents/inventory-service-cache-regression.json", "locator": "evidence[1]", "display_name": "inventory error metric", "retrieved_at": "2026-07-18T12:26:00+08:00", "content_hash": "7777777777777777777777777777777777777777777777777777777777777777"},
-      "content_hash": "7777777777777777777777777777777777777777777777777777777777777777",
+      "citation": {"citation_id": "cit_inventory_metric_error_rate", "uri": "fixture://incidents/inventory-service-cache-regression.json", "locator": "evidence[1]", "display_name": "inventory error metric", "retrieved_at": "2026-07-18T12:26:00+08:00"},
       "collected_at": "2026-07-18T12:26:00+08:00"
     },
     {
@@ -66,8 +65,7 @@
       "relevance_score": 0.94,
       "reliability_score": 0.97,
       "metadata": {"operation": "GET /inventory", "status": "timeout", "trace_id": "trace_inventory_cache_001"},
-      "citation": {"citation_id": "cit_inventory_trace_database_reads", "uri": "fixture://incidents/inventory-service-cache-regression.json", "locator": "evidence[2]", "display_name": "inventory database trace", "retrieved_at": "2026-07-18T12:26:00+08:00", "content_hash": "8888888888888888888888888888888888888888888888888888888888888888"},
-      "content_hash": "8888888888888888888888888888888888888888888888888888888888888888",
+      "citation": {"citation_id": "cit_inventory_trace_database_reads", "uri": "fixture://incidents/inventory-service-cache-regression.json", "locator": "evidence[2]", "display_name": "inventory database trace", "retrieved_at": "2026-07-18T12:26:00+08:00"},
       "collected_at": "2026-07-18T12:26:00+08:00"
     },
     {
@@ -84,8 +82,7 @@
       "relevance_score": 1.0,
       "reliability_score": 0.99,
       "metadata": {"change_type": "configuration", "release": "inventory-2026.07.18.3"},
-      "citation": {"citation_id": "cit_inventory_change_cache_ttl", "uri": "fixture://incidents/inventory-service-cache-regression.json", "locator": "evidence[3]", "display_name": "inventory cache configuration diff", "retrieved_at": "2026-07-18T12:26:00+08:00", "content_hash": "9999999999999999999999999999999999999999999999999999999999999999"},
-      "content_hash": "9999999999999999999999999999999999999999999999999999999999999999",
+      "citation": {"citation_id": "cit_inventory_change_cache_ttl", "uri": "fixture://incidents/inventory-service-cache-regression.json", "locator": "evidence[3]", "display_name": "inventory cache configuration diff", "retrieved_at": "2026-07-18T12:26:00+08:00"},
       "collected_at": "2026-07-18T12:26:00+08:00"
     },
     {
@@ -102,8 +99,7 @@
       "relevance_score": 0.84,
       "reliability_score": 0.96,
       "metadata": {"depth": 1},
-      "citation": {"citation_id": "cit_inventory_topology_database", "uri": "fixture://incidents/inventory-service-cache-regression.json", "locator": "evidence[4]", "display_name": "inventory topology", "retrieved_at": "2026-07-18T12:26:00+08:00", "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
-      "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "citation": {"citation_id": "cit_inventory_topology_database", "uri": "fixture://incidents/inventory-service-cache-regression.json", "locator": "evidence[4]", "display_name": "inventory topology", "retrieved_at": "2026-07-18T12:26:00+08:00"},
       "collected_at": "2026-07-18T12:26:00+08:00"
     }
   ],

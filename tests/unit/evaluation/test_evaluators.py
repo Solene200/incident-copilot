@@ -3,9 +3,15 @@
 from datetime import UTC, datetime
 
 import pytest
+from pydantic import JsonValue
 
 from incident_copilot.domain.common import ReportDisposition, SourceType
-from incident_copilot.domain.evidence import Citation, EvidenceRef
+from incident_copilot.domain.evidence import (
+    Citation,
+    EvidenceRef,
+    EvidenceResolutionError,
+    content_sha256,
+)
 from incident_copilot.domain.report import IncidentReport, InvestigationStats
 from incident_copilot.evaluation.evaluators import (
     aggregate_metrics,
@@ -25,7 +31,18 @@ from incident_copilot.evaluation.schemas import (
 )
 
 NOW = datetime(2026, 7, 18, 8, 0, tzinfo=UTC)
-HASH = "a" * 64
+SOURCE_CONTENT: JsonValue = {"signal": "labeled causal evidence"}
+HASH = content_sha256(SOURCE_CONTENT)
+
+
+class StaticResolver:
+    def __init__(self, content: JsonValue = SOURCE_CONTENT) -> None:
+        self._content = content
+
+    def resolve(self, citation: Citation) -> JsonValue:
+        if citation.locator != "evidence[0]":
+            raise EvidenceResolutionError("locator not found")
+        return self._content
 
 
 def _report(*, include_citation: bool = True) -> IncidentReport:
@@ -186,15 +203,55 @@ def test_failure_type_and_root_cause_terms_are_transparent_lexical_checks() -> N
     assert classify_failure_type("unclassified symptom") is None
 
 
-def test_citation_correctness_requires_exact_report_citation() -> None:
-    correct = citation_metrics(_report(include_citation=True))
-    missing = citation_metrics(_report(include_citation=False))
+def test_citation_metrics_separate_three_trust_layers() -> None:
+    correct = citation_metrics(_report(include_citation=True), StaticResolver())
+    missing = citation_metrics(_report(include_citation=False), StaticResolver())
 
-    assert correct.checked_evidence_count == 1
-    assert correct.correct_citation_count == 1
-    assert correct.score == 1.0
-    assert missing.correct_citation_count == 0
-    assert missing.score == 0.0
+    assert correct.reference_consistency.score == 1.0
+    assert correct.locator_resolvability.score == 1.0
+    assert correct.content_integrity.score == 1.0
+    assert missing.reference_consistency.score == 0.0
+    assert missing.locator_resolvability.score == 0.0
+    assert missing.content_integrity.checked_citation_count == 0
+    assert missing.content_integrity.score is None
+
+
+def test_citation_metrics_detect_tampered_source_content() -> None:
+    result = citation_metrics(
+        _report(include_citation=True),
+        StaticResolver({"signal": "tampered"}),
+    )
+
+    assert result.reference_consistency.score == 1.0
+    assert result.locator_resolvability.score == 1.0
+    assert result.content_integrity.score == 0.0
+
+
+def test_citation_metrics_detect_tampered_hash() -> None:
+    report = _report(include_citation=True)
+    original = report.citations[0]
+    tampered = original.model_copy(update={"content_hash": "b" * 64})
+    report = report.model_copy(update={"citations": (tampered,)})
+
+    result = citation_metrics(report, StaticResolver())
+
+    assert result.reference_consistency.score == 0.0
+    assert result.locator_resolvability.score == 1.0
+    assert result.content_integrity.score == 0.0
+
+
+def test_citation_metrics_detect_tampered_locator() -> None:
+    report = _report(include_citation=True)
+    original = report.citations[0]
+    tampered = original.model_copy(update={"locator": "evidence[99]"})
+    report = report.model_copy(update={"citations": (tampered,)})
+
+    result = citation_metrics(report, StaticResolver())
+
+    assert result.reference_consistency.score == 0.0
+    assert result.locator_resolvability.score == 0.0
+    assert result.content_integrity.checked_citation_count == 0
+    assert result.content_integrity.score is None
 
 
 def test_aggregate_excludes_failed_sample_but_keeps_measured_token_provenance() -> None:

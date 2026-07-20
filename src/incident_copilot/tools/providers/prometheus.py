@@ -2,7 +2,6 @@
 
 import asyncio
 import hashlib
-import json
 import math
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -13,11 +12,11 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlsplit
 from urllib.request import Request, urlopen
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
 
 from incident_copilot.core.clock import Clock, utc_now
 from incident_copilot.domain.common import SourceType
-from incident_copilot.domain.evidence import Citation, Evidence
+from incident_copilot.domain.evidence import Citation, Evidence, content_sha256
 from incident_copilot.tools.exceptions import (
     ProviderInvalidQueryError,
     ProviderMalformedResponseError,
@@ -310,7 +309,7 @@ class PrometheusMetricsProvider:
                 provider_name=PROVIDER_NAME,
                 operation="query_metrics",
             )
-        points: list[dict[str, float | str]] = []
+        points: list[JsonValue] = []
         numeric_values: list[float] = []
         previous_timestamp: float | None = None
         for timestamp, raw_value in series.values:
@@ -355,7 +354,7 @@ class PrometheusMetricsProvider:
                 operation="query_metrics",
             )
 
-        content = {
+        content: JsonValue = {
             "metric_name": query.metric_name,
             "prometheus_metric": mapping.prometheus_name,
             "aggregation": query.aggregation,
@@ -363,10 +362,7 @@ class PrometheusMetricsProvider:
             "labels": dict(sorted(series.metric.items())),
             "points": points,
         }
-        canonical_content = json.dumps(
-            content, ensure_ascii=True, separators=(",", ":"), sort_keys=True
-        ).encode()
-        content_hash = hashlib.sha256(canonical_content).hexdigest()
+        content_hash = content_sha256(content)
         identity = hashlib.sha256(
             (
                 f"{query.service}|{query.metric_name}|{query.aggregation}|"
@@ -377,13 +373,13 @@ class PrometheusMetricsProvider:
         maximum = max(numeric_values)
         latest = numeric_values[-1]
         collected_at = self._clock()
-        citation = Citation(
+        citation = Citation.for_content(
+            content=content,
             citation_id=f"cit_prom_{identity}",
             uri=request_url,
             locator=f"matrix result[{series_index}] ({len(points)} samples)",
             display_name=f"Prometheus: {query.metric_name}",
             retrieved_at=collected_at,
-            content_hash=content_hash,
         )
         return Evidence(
             evidence_id=f"ev_prom_{identity}",
@@ -407,6 +403,5 @@ class PrometheusMetricsProvider:
                 "sample_count": len(points),
             },
             citation=citation,
-            content_hash=content_hash,
             collected_at=collected_at,
         )

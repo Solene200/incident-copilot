@@ -169,15 +169,26 @@ class RetrievalMetrics(DomainModel):
     reciprocal_rank: float = Field(ge=0.0, le=1.0)
 
 
-class CitationMetrics(DomainModel):
-    """报告中每个 EvidenceRef 的精确引用完整性。"""
+class CitationCheckMetrics(DomainModel):
+    """一个引用验证层的显式分子、分母和比例。"""
 
-    # 报告中实际检查了多少条 EvidenceRef。
-    checked_evidence_count: int = Field(ge=0)
-    # Citation ID、URI、locator 和哈希都正确的数量。
-    correct_citation_count: int = Field(ge=0)
-    # 正确引用比例, 没有 EvidenceRef 时为 None。
+    # 该验证层实际进入分母的引用数量。
+    checked_citation_count: int = Field(ge=0)
+    # 通过该验证层的引用数量。
+    passed_citation_count: int = Field(ge=0)
+    # 通过比例,该层没有可检查引用时为 None。
     score: float | None = Field(default=None, ge=0.0, le=1.0)
+
+
+class CitationMetrics(DomainModel):
+    """彼此独立的引用一致性、可解析性和内容完整性指标。"""
+
+    # EvidenceRef 与报告 Citation 精确一致;分母为全部报告 EvidenceRef。
+    reference_consistency: CitationCheckMetrics
+    # URI/locator 能否重新取得来源内容;分母为全部报告 EvidenceRef。
+    locator_resolvability: CitationCheckMetrics
+    # 已解析来源的 canonical hash 是否匹配;分母仅为成功解析的引用。
+    content_integrity: CitationCheckMetrics
 
 
 class ActualToolCall(DomainModel):
@@ -286,8 +297,12 @@ class AggregateMetrics(DomainModel):
     tool_argument_accuracy: float | None = Field(default=None, ge=0.0, le=1.0)
     # 各样例证据相关性 F1 的平均值。
     evidence_relevance_f1: float | None = Field(default=None, ge=0.0, le=1.0)
-    # 各样例引用正确率的平均值。
-    citation_correctness: float | None = Field(default=None, ge=0.0, le=1.0)
+    # 各已完成样例引用与 EvidenceRef 一致性比例的平均值。
+    citation_reference_consistency: float | None = Field(default=None, ge=0.0, le=1.0)
+    # 各已完成样例引用 locator 可解析比例的平均值。
+    citation_locator_resolvability: float | None = Field(default=None, ge=0.0, le=1.0)
+    # 各已完成样例已解析引用内容哈希匹配比例的平均值。
+    citation_content_integrity: float | None = Field(default=None, ge=0.0, le=1.0)
     # 根因判断达到正确阈值的样例比例。
     root_cause_accuracy: float | None = Field(default=None, ge=0.0, le=1.0)
     # 已完成样例平均使用的调查轮数。
@@ -314,7 +329,7 @@ class EvaluationSummary(DomainModel):
     """与一个数据集版本和原始结果产物关联的聚合报告。"""
 
     # 汇总报告的数据结构版本, 便于将来兼容旧产物。
-    schema_version: Literal["1.0"] = "1.0"
+    schema_version: Literal["2.0"] = "2.0"
     # 本次评估运行的唯一标识。
     run_id: str = Field(pattern=r"^evalrun_[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
     # 本次使用的评估数据集标识。

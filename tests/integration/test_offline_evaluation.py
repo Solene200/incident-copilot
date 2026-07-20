@@ -32,6 +32,10 @@ async def test_offline_evaluation_writes_raw_and_summary_without_network(
     assert summary.sample_count == 3
     assert summary.completed_sample_count == 3
     assert summary.failed_sample_count == 0
+    assert summary.schema_version == "2.0"
+    assert summary.metrics.citation_reference_consistency == 1.0
+    assert summary.metrics.citation_locator_resolvability == 1.0
+    assert summary.metrics.citation_content_integrity == 1.0
     assert summary.metrics.token_usage_estimated is True
     assert summary.metrics.estimated_cost_usd is None
     raw_lines = (tmp_path / "raw-results.jsonl").read_text(encoding="utf-8").splitlines()

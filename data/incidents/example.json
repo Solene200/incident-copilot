@@ -1,5 +1,6 @@
 {
   "schema_version": "1.0",
+  "content_hash_algorithm": "sha256-canonical-content-v1",
   "name": "phase-1-schema-example",
   "description": "Sanitized structure example used to verify the Phase 1 fixture contract.",
   "contains_sensitive_data": false,
@@ -41,10 +42,8 @@
         "uri": "fixture://incidents/example.json",
         "locator": "evidence[0]",
         "display_name": "Phase 1 fixture schema example",
-        "retrieved_at": "2026-07-18T10:46:00+08:00",
-        "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        "retrieved_at": "2026-07-18T10:46:00+08:00"
       },
-      "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "collected_at": "2026-07-18T10:46:00+08:00"
     }
   ],
@@ -54,4 +53,3 @@
     "sanitized"
   ]
 }
-

@@ -1,5 +1,6 @@
 {
   "schema_version": "1.0",
+  "content_hash_algorithm": "sha256-canonical-content-v1",
   "name": "checkout-service-dns-misconfiguration",
   "description": "Sanitized checkout timeouts caused by an invalid production DNS resolver setting.",
   "contains_sensitive_data": false,
@@ -30,8 +31,7 @@
       "relevance_score": 0.98,
       "reliability_score": 0.97,
       "metadata": {"environment": "production", "error_code": "DNS_LOOKUP_TIMEOUT"},
-      "citation": {"citation_id": "cit_checkout_log_dns_timeout", "uri": "fixture://incidents/checkout-service-dns-misconfiguration.json", "locator": "evidence[0]", "display_name": "checkout DNS error log", "retrieved_at": "2026-07-18T11:26:00+08:00", "content_hash": "1111111111111111111111111111111111111111111111111111111111111111"},
-      "content_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+      "citation": {"citation_id": "cit_checkout_log_dns_timeout", "uri": "fixture://incidents/checkout-service-dns-misconfiguration.json", "locator": "evidence[0]", "display_name": "checkout DNS error log", "retrieved_at": "2026-07-18T11:26:00+08:00"},
       "collected_at": "2026-07-18T11:26:00+08:00"
     },
     {
@@ -48,8 +48,7 @@
       "relevance_score": 0.88,
       "reliability_score": 0.98,
       "metadata": {"metric_name": "http.server.error_rate", "aggregation": "rate"},
-      "citation": {"citation_id": "cit_checkout_metric_error_rate", "uri": "fixture://incidents/checkout-service-dns-misconfiguration.json", "locator": "evidence[1]", "display_name": "checkout error metric", "retrieved_at": "2026-07-18T11:26:00+08:00", "content_hash": "2222222222222222222222222222222222222222222222222222222222222222"},
-      "content_hash": "2222222222222222222222222222222222222222222222222222222222222222",
+      "citation": {"citation_id": "cit_checkout_metric_error_rate", "uri": "fixture://incidents/checkout-service-dns-misconfiguration.json", "locator": "evidence[1]", "display_name": "checkout error metric", "retrieved_at": "2026-07-18T11:26:00+08:00"},
       "collected_at": "2026-07-18T11:26:00+08:00"
     },
     {
@@ -66,8 +65,7 @@
       "relevance_score": 1.0,
       "reliability_score": 0.98,
       "metadata": {"operation": "GET /checkout", "status": "timeout", "trace_id": "trace_checkout_dns_001"},
-      "citation": {"citation_id": "cit_checkout_trace_dns_wait", "uri": "fixture://incidents/checkout-service-dns-misconfiguration.json", "locator": "evidence[2]", "display_name": "checkout DNS trace", "retrieved_at": "2026-07-18T11:26:00+08:00", "content_hash": "3333333333333333333333333333333333333333333333333333333333333333"},
-      "content_hash": "3333333333333333333333333333333333333333333333333333333333333333",
+      "citation": {"citation_id": "cit_checkout_trace_dns_wait", "uri": "fixture://incidents/checkout-service-dns-misconfiguration.json", "locator": "evidence[2]", "display_name": "checkout DNS trace", "retrieved_at": "2026-07-18T11:26:00+08:00"},
       "collected_at": "2026-07-18T11:26:00+08:00"
     },
     {
@@ -84,8 +82,7 @@
       "relevance_score": 1.0,
       "reliability_score": 0.99,
       "metadata": {"change_type": "configuration", "release": "checkout-2026.07.18.4"},
-      "citation": {"citation_id": "cit_checkout_change_dns_resolver", "uri": "fixture://incidents/checkout-service-dns-misconfiguration.json", "locator": "evidence[3]", "display_name": "checkout DNS configuration diff", "retrieved_at": "2026-07-18T11:26:00+08:00", "content_hash": "4444444444444444444444444444444444444444444444444444444444444444"},
-      "content_hash": "4444444444444444444444444444444444444444444444444444444444444444",
+      "citation": {"citation_id": "cit_checkout_change_dns_resolver", "uri": "fixture://incidents/checkout-service-dns-misconfiguration.json", "locator": "evidence[3]", "display_name": "checkout DNS configuration diff", "retrieved_at": "2026-07-18T11:26:00+08:00"},
       "collected_at": "2026-07-18T11:26:00+08:00"
     },
     {
@@ -102,8 +99,7 @@
       "relevance_score": 0.82,
       "reliability_score": 0.96,
       "metadata": {"depth": 1},
-      "citation": {"citation_id": "cit_checkout_topology_orders", "uri": "fixture://incidents/checkout-service-dns-misconfiguration.json", "locator": "evidence[4]", "display_name": "checkout topology", "retrieved_at": "2026-07-18T11:26:00+08:00", "content_hash": "5555555555555555555555555555555555555555555555555555555555555555"},
-      "content_hash": "5555555555555555555555555555555555555555555555555555555555555555",
+      "citation": {"citation_id": "cit_checkout_topology_orders", "uri": "fixture://incidents/checkout-service-dns-misconfiguration.json", "locator": "evidence[4]", "display_name": "checkout topology", "retrieved_at": "2026-07-18T11:26:00+08:00"},
       "collected_at": "2026-07-18T11:26:00+08:00"
     }
   ],

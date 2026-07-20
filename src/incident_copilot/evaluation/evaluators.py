@@ -8,10 +8,17 @@ from typing import TypeVar
 
 from pydantic import JsonValue
 
+from incident_copilot.domain.evidence import (
+    Citation,
+    EvidenceResolutionError,
+    EvidenceResolver,
+    content_sha256,
+)
 from incident_copilot.domain.report import IncidentReport
 from incident_copilot.evaluation.schemas import (
     ActualToolCall,
     AggregateMetrics,
+    CitationCheckMetrics,
     CitationMetrics,
     EvaluationSampleResult,
     ExpectedToolCall,
@@ -152,29 +159,55 @@ def root_cause_term_recall(root_cause: str | None, terms: Sequence[str]) -> floa
     return matches / len(terms)
 
 
-def citation_metrics(report: IncidentReport) -> CitationMetrics:
-    """验证每个 EvidenceRef 都能解析到完全一致的报告引用。"""
+def _citation_check_metrics(checked: int, passed: int) -> CitationCheckMetrics:
+    return CitationCheckMetrics(
+        checked_citation_count=checked,
+        passed_citation_count=passed,
+        score=passed / checked if checked else None,
+    )
+
+
+def citation_metrics(
+    report: IncidentReport,
+    resolver: EvidenceResolver,
+) -> CitationMetrics:
+    """分别验证引用对象一致性、locator 可解析性与内容完整性。"""
     citations = {citation.citation_id: citation for citation in report.citations}
     evidence = (*report.supporting_evidence, *report.contradicting_evidence)
-    correct = 0
+    consistent = 0
+    resolved_contents: list[tuple[Citation, JsonValue]] = []
     for item in evidence:
         expected = item.citation
         actual = citations.get(expected.citation_id)
         if actual is not None and (
             actual.uri,
             actual.locator,
+            actual.content_hash_algorithm,
             actual.content_hash.casefold(),
         ) == (
             expected.uri,
             expected.locator,
+            expected.content_hash_algorithm,
             expected.content_hash.casefold(),
         ):
-            correct += 1
-    score = correct / len(evidence) if evidence else None
+            consistent += 1
+        if actual is None:
+            continue
+        try:
+            content = resolver.resolve(actual)
+        except EvidenceResolutionError:
+            continue
+        resolved_contents.append((actual, content))
+
+    intact = sum(
+        content_sha256(content, algorithm=citation.content_hash_algorithm).casefold()
+        == citation.content_hash.casefold()
+        for citation, content in resolved_contents
+    )
     return CitationMetrics(
-        checked_evidence_count=len(evidence),
-        correct_citation_count=correct,
-        score=score,
+        reference_consistency=_citation_check_metrics(len(evidence), consistent),
+        locator_resolvability=_citation_check_metrics(len(evidence), len(resolved_contents)),
+        content_integrity=_citation_check_metrics(len(resolved_contents), intact),
     )
 
 
@@ -232,8 +265,16 @@ def aggregate_metrics(results: Sequence[EvaluationSampleResult]) -> AggregateMet
             metric.f1 if metric is not None else None
             for metric in (result.evidence_relevance for result in completed)
         ),
-        citation_correctness=_defined_mean(
-            metric.score if metric is not None else None
+        citation_reference_consistency=_defined_mean(
+            metric.reference_consistency.score if metric is not None else None
+            for metric in (result.citations for result in completed)
+        ),
+        citation_locator_resolvability=_defined_mean(
+            metric.locator_resolvability.score if metric is not None else None
+            for metric in (result.citations for result in completed)
+        ),
+        citation_content_integrity=_defined_mean(
+            metric.content_integrity.score if metric is not None else None
             for metric in (result.citations for result in completed)
         ),
         root_cause_accuracy=_defined_mean(

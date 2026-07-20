@@ -256,7 +256,7 @@
 
 - 版本化小型离线事故数据集和 ground truth。
 - Evaluation Runner 与逐样本 JSON/表格结果。
-- 服务定位、故障类型、Recall@K、MRR、Evidence Relevance、Citation Correctness。
+- 服务定位、故障类型、Recall@K、MRR、Evidence Relevance，以及拆分后的 Citation reference consistency、locator resolvability、content integrity。
 - Tool 选择/参数、根因诊断、平均轮数、调用数、端到端时延和 Token/估算成本。
 - 节点/工具/模型 OpenTelemetry spans；可选 LangSmith exporter。
 - `docs/EVALUATION.md`。
@@ -278,7 +278,7 @@
 
 - [x] 版本化 `1.0.0` 数据集包含 3 个不同根因的脱敏 Fixture；ground truth 只进入 evaluator，不传入 Graph。
 - [x] 一条 `uv run python -m scripts.evaluate_offline` 命令生成逐样例 JSONL、JSON 汇总和 Markdown 汇总；失败样例保留且汇总计数可追溯。
-- [x] 覆盖服务定位、故障类型、Recall@K、MRR、工具选择/参数、Evidence relevance、引用正确性、根因准确率、轮数、工具次数、wall-clock 时延和 Token；Fake Token 标记 estimated，缺定价时成本为 unavailable。
+- [x] 覆盖服务定位、故障类型、Recall@K、MRR、工具选择/参数、Evidence relevance、三层 Citation 验证、根因准确率、轮数、工具次数、wall-clock 时延和 Token；Fake Token 标记 estimated，缺定价时成本为 unavailable。旧 Phase 6 `citation_correctness` 仅保留为历史对象一致性结果，不作为当前内容完整性结论。
 - [x] 节点、工具、结构化模型调用具有默认关闭的 OpenTelemetry spans；`observability` extra 为可选 Apache-2.0 依赖。LangSmith 必须显式开启，默认 tracing context 即使外部环境变量为 true 也保持离线。
 - [x] Phase 6 基线真实运行 3/3 完成、0 失败；完整数值、逐样例原始结果和限制记录在 `docs/EVALUATION.md` 与 `artifacts/evaluation/phase6-baseline/`，未声明泛化准确率或性能 benchmark。
 - [x] `uv sync`、`uv lock --check`、Ruff format/check、`mypy src tests scripts`、17 项 Phase 6 定向测试和 165 项全量测试通过；默认测试拒绝网络连接且没有调用付费 API。
@@ -319,7 +319,23 @@
 - 面试材料能解释设计取舍、失败模式与真实评估结果。
 - 所有必需检查通过，已知限制显式记录。
 
-## 11. 跨阶段质量门禁
+## 11. 简历最终版优化 Batch A：Evidence 与 Citation 可信度
+
+### 状态
+
+`completed`（2026-07-20）；按用户协议停止，等待确认后才可进入 Batch B。
+
+### 实际验收
+
+- [x] `sha256-canonical-content-v1` 固化字符串/JSON canonical bytes 与 SHA-256 规则；Citation/Evidence 持久化算法版本。
+- [x] Evidence 创建边界统一计算 hash，显式错误 hash 被拒绝；4 份 incident fixture 删除手填 hash，只声明算法版本。
+- [x] `EvidenceResolver` 端口与 `RepositoryEvidenceResolver` 可按受控 fixture/knowledge locator 找回完整内容，拒绝路径逃逸、越界和未知语法。
+- [x] Evaluation schema 升级为 2.0，拆分 reference consistency、locator resolvability、content integrity；content/hash/locator 篡改均有独立失败测试。
+- [x] 新产物写入 `artifacts/evaluation/batch-a-citation-integrity/`：3/3 completed、0 failed，三层 Citation 指标均为 1.0；旧 `citation_correctness` 未复用。
+- [x] `uv lock --check`、Ruff format/check、`mypy src tests scripts`、206 项全量测试和 Graph 文档检查通过；CLI、RAG、API/SSE/HITL Demo 通过。
+- [ ] Learning Guide 生成仍被既有 IC-P1-07 阻断：`core/clock.py` 缺少源码精读链接。该问题明确属于 Batch D，本批已实际运行并记录失败，没有跨批修改。
+
+## 12. 跨阶段质量门禁
 
 Phase 1 起每阶段至少运行：
 

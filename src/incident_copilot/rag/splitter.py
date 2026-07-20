@@ -14,6 +14,8 @@ from incident_copilot.rag.schemas import (
 
 # 识别 Markdown 一到六级标题及其标题文字。
 HEADING_PATTERN = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
+DEFAULT_MAX_TOKENS = 120
+DEFAULT_OVERLAP_TOKENS = 20
 
 
 def tokenize(value: str) -> tuple[str, ...]:
@@ -32,7 +34,12 @@ class _Section:
 class MarkdownSplitter:
     """在 Markdown 章节内切分并保留引用和元数据血缘。"""
 
-    def __init__(self, *, max_tokens: int = 120, overlap_tokens: int = 20) -> None:
+    def __init__(
+        self,
+        *,
+        max_tokens: int = DEFAULT_MAX_TOKENS,
+        overlap_tokens: int = DEFAULT_OVERLAP_TOKENS,
+    ) -> None:
         if max_tokens < 20 or max_tokens > 2_000:
             raise ValueError("max_tokens must be between 20 and 2000")
         if overlap_tokens < 0 or overlap_tokens >= max_tokens // 2:
@@ -63,13 +70,13 @@ class MarkdownSplitter:
                 f"{document.document_id.removeprefix('doc_')}_{ordinal}_{content_hash[:12]}"
             )
             chunk_id = f"chunk_{stable_suffix}"
-            citation = Citation(
+            citation = Citation.for_content(
+                content=text,
                 citation_id=f"cit_{stable_suffix}",
                 uri=document.source_uri,
                 locator=f"section={' > '.join(section_path)};chunk={ordinal}",
                 display_name=f"{document.title} - {' > '.join(section_path)}",
                 retrieved_at=document.ingested_at,
-                content_hash=content_hash,
             )
             chunks.append(
                 KnowledgeChunk(

@@ -85,7 +85,6 @@ class RagKnowledgeProvider:
                         "matched_by": list(hit.matched_by),
                     },
                     citation=chunk.citation,
-                    content_hash=chunk.content_hash,
                     collected_at=collected_at,
                 )
             )

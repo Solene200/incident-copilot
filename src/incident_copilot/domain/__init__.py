@@ -8,7 +8,17 @@ from incident_copilot.domain.common import (
     Severity,
     SourceType,
 )
-from incident_copilot.domain.evidence import Citation, Evidence, EvidenceRef
+from incident_copilot.domain.evidence import (
+    CONTENT_HASH_ALGORITHM,
+    Citation,
+    ContentHashAlgorithm,
+    Evidence,
+    EvidenceRef,
+    EvidenceResolutionError,
+    EvidenceResolver,
+    canonical_content_bytes,
+    content_sha256,
+)
 from incident_copilot.domain.hypothesis import Hypothesis, VerificationQuery
 from incident_copilot.domain.incident import IncidentContext
 from incident_copilot.domain.report import (
@@ -20,10 +30,14 @@ from incident_copilot.domain.report import (
 )
 
 __all__ = [
+    "CONTENT_HASH_ALGORITHM",
     "Citation",
+    "ContentHashAlgorithm",
     "Environment",
     "Evidence",
     "EvidenceRef",
+    "EvidenceResolutionError",
+    "EvidenceResolver",
     "Hypothesis",
     "HypothesisStatus",
     "IncidentContext",
@@ -37,4 +51,6 @@ __all__ = [
     "SourceType",
     "TimelineEvent",
     "VerificationQuery",
+    "canonical_content_bytes",
+    "content_sha256",
 ]

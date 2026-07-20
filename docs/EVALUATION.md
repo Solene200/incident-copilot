@@ -39,18 +39,20 @@ Runner 会捕获单个样例异常并写入原始结果，失败样例仍计入 
 | 工具选择 | 期望与实际工具名集合的 F1 |
 | 工具参数 | 仅比较 ground truth 明确标注的字段；多轮出现同名工具时取字段匹配度最高的真实调用，运行时额外预算字段不受罚 |
 | Evidence relevance | 报告 supporting Evidence ID 与相关 Evidence ID 集合的 F1 |
-| 引用正确性 | 每个 EvidenceRef 的 citation ID、URI、locator、content hash 是否与报告 Citation 完全一致 |
+| Citation reference consistency | 每个 EvidenceRef 的 citation ID、URI、locator、hash algorithm 和 content hash 是否与报告 Citation 完全一致 |
+| Citation locator resolvability | Repository resolver 能否根据 URI 与 locator 重新取得原始 fixture Evidence 或 knowledge Chunk |
+| Citation content integrity | 对成功解析的原始内容按 `sha256-canonical-content-v1` 复算并匹配报告 Citation hash |
 | 根因准确率 | 报告覆盖至少 75% 版本化根因关键词记为正确；同时保留连续 term recall |
 | 轮数/工具次数 | 直接读取最终报告的实测调查统计 |
 | 时延 | Runner 使用 `perf_counter` 测量单进程 Graph wall-clock；P95 使用样本线性插值 |
 | Token | 读取 ModelProvider usage；Fake Model 的字符估算明确标记 `estimated=true` |
 | 成本 | 未配置模型与定价时为 `unavailable_no_pricing`，不推算或伪造 |
 
-集合 evaluator 的两个空集合定义为 perfect exact match；期望非空而实际为空时 precision/recall/F1 均为 0。Citation 没有可检查 Evidence 时返回 `null`，聚合时不把未定义分母当作满分。
+集合 evaluator 的两个空集合定义为 perfect exact match；期望非空而实际为空时 precision/recall/F1 均为 0。Reference consistency 与 locator resolvability 的分母都是报告中的全部 EvidenceRef；content integrity 的分母只包含成功解析的 Citation。任一层没有可检查引用时返回 `null`，聚合时不把未定义分母当作满分。离线 resolver 只覆盖仓库内不可变 fixture 和 knowledge 来源，不把 live HTTP citation 计为已验证。
 
-## Phase 6 实际基线
+## Batch A 可信引用基线
 
-提交产物位于 `artifacts/evaluation/phase6-baseline/`。本次运行 ID 为 `evalrun_20260718T085033Z_58a018e0`，3/3 样例完成、0 个失败：
+schema 2.0 新产物位于 `artifacts/evaluation/batch-a-citation-integrity/`。本次运行 ID 为 `evalrun_20260720T083338Z_b7eaa5a9`，3/3 样例完成、0 个失败。Phase 6 的 `citation_correctness` 只代表旧对象自洽口径，保留为历史产物但不复用为当前结论：
 
 | 指标 | 实际值 |
 | --- | ---: |
@@ -61,17 +63,19 @@ Runner 会捕获单个样例异常并写入原始结果，失败样例仍计入 
 | 工具选择 F1 | 0.9487 |
 | 工具参数准确率 | 0.7857 |
 | Evidence relevance F1 | 0.7852 |
-| 引用正确性 | 1.0000 |
+| Citation reference consistency | 1.0000 |
+| Citation locator resolvability | 1.0000 |
+| Citation content integrity | 1.0000 |
 | 根因准确率 | 1.0000 |
 | 平均调查轮数 | 1.0000 |
 | 平均工具调用数 | 7.0000 |
-| 平均时延 | 12.0933 ms |
-| P95 时延 | 14.9645 ms |
-| 总 Token | 12,353（estimated） |
-| 平均 Token | 4,117.6667（estimated） |
+| 平均时延 | 12.5324 ms |
+| P95 时延 | 15.7717 ms |
+| 总 Token | 12,512（estimated） |
+| 平均 Token | 4,170.6667（estimated） |
 | 估算成本 | N/A（未配置定价） |
 
-这些数值只描述 2026-07-18 在当前 Windows/Python 3.13 机器上的一次固定 fixture 运行。样例少且与 Fake Model/知识库同仓，1.0 指标不能解释为生产准确率；时延也不是稳定 benchmark。工具参数与 Evidence relevance 的非满分结果被原样保留。
+这些数值只描述 2026-07-20 在当前 Windows/Python 3.13 机器上的一次固定 fixture 运行。三个 Citation 指标证明本次报告能回到仓库内不可变来源并复算内容，不覆盖 live HTTP 来源。样例少且与 Fake Model/知识库同仓，其他 1.0 指标不能解释为生产准确率；时延也不是稳定 benchmark。工具参数与 Evidence relevance 的非满分结果被原样保留。
 
 ## 可观测性
 

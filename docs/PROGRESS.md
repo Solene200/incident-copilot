@@ -4,11 +4,51 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 当前已完成阶段 | Phase 7 |
-| 下一阶段 | 无；等待用户定义后续范围 |
-| 最近更新 | 2026-07-18 |
+| 当前已完成阶段 | Phase 7；简历最终版优化 Batch A |
+| 下一阶段 | 等待用户确认后执行 Batch B；不得自动进入 |
+| 最近更新 | 2026-07-20 |
 | 仓库初始状态 | 空目录，无 `.git` 元数据 |
 | 当前运行环境 | Windows / PowerShell；Python 3.13 可用 |
+
+## 简历最终版优化 Batch A — Evidence 与 Citation 可信度（2026-07-20）
+
+### 完成内容
+
+- 关闭 IC-P0-01：新增 `sha256-canonical-content-v1`，字符串使用 UTF-8，其他 JSON value 使用稳定 key 顺序、紧凑 separators、保留 Unicode 且拒绝非有限数字的 canonical JSON。
+- `Citation.for_content()` 让 Provider 从真实内容创建引用；`Evidence` 前置/最终 validator 统一计算并复核 Evidence/Citation 的算法版本与 hash，显式错误值不再能通过“两个字段相等”伪装可信。
+- 4 份 incident fixture 全部删除 Evidence/Citation 手填 hash，顶层只声明 `content_hash_algorithm`；加载后由领域边界生成真实 hash。
+- 新增框架无关 `EvidenceResolver` 端口；`RepositoryEvidenceResolver` 支持 fixture `evidence[index]`/受控子路径和 knowledge section/chunk locator，路径逃逸、越界、未知 locator、损坏来源均显式失败。
+- Evaluation artifact schema 升级为 2.0；原 `citation_correctness` 拆为 reference consistency、locator resolvability、content integrity。前两项分母为全部报告 EvidenceRef，完整性分母为成功解析项。
+- 新增 content、hash、locator 篡改失败测试，以及全部 fixture 无手填 hash、fixture/knowledge resolver round-trip 与路径安全测试。
+- 新评估产物位于 `artifacts/evaluation/batch-a-citation-integrity/`，run ID `evalrun_20260720T083338Z_b7eaa5a9`：3/3 completed、0 failed，三层 Citation 指标均为 1.0。旧 Phase 6 `citation_correctness` 只保留为历史快照，未复用。
+
+### 修改范围
+
+- 领域/Provider：`domain/evidence.py`、`domain/__init__.py`、RAG splitter/provider、Prometheus provider。
+- Resolver/Evaluation：`evaluation/dataset.py`、schemas/evaluators/runner/exports。
+- 数据/产物：4 份 incident fixture；`artifacts/evaluation/batch-a-citation-integrity/`。
+- 测试：Evidence、fixture、resolver、evaluator、Prometheus 和离线评估相关测试。
+- 文档：Data Model、Evaluation、Roadmap、Progress 与相关 learning source chapters。未修改独立审查快照。
+
+### 真实验收结果
+
+| 检查 | 结果 |
+| --- | --- |
+| `uv lock --check` | PASS：74 packages |
+| `uv run ruff format --check .` | PASS：110 files |
+| `uv run ruff check .` | PASS |
+| `uv run mypy src tests scripts` | PASS：110 source files |
+| `uv run pytest` | PASS：206 passed in 3.42s |
+| Graph 文档检查 | PASS：`GRAPH_CURRENT.md` current |
+| Learning Guide 生成 | FAIL：既有 IC-P1-07，缺少 `src/incident_copilot/core/clock.py` 精读链接；按批次协议留给 Batch D |
+| CLI Demo | PASS：probable、13 supporting evidence、7 tool calls、1 research round |
+| RAG ingest/search | PASS：6 documents / 18 chunks，重复 ingest 稳定；BM25 + vector + RRF 返回版本化 citation。首次误用位置参数被 argparse 拒绝，改用脚本要求的 `--query` 后通过 |
+| API/SSE/HITL Demo | PASS：50 events，同 thread、新 resume run，最终 completed，13 supporting evidence |
+| 离线 Evaluation | PASS：3/3 completed、0 failed；三层 Citation 指标均 1.0 |
+
+### 停止点
+
+本批只处理 IC-P0-01。未开始 Planner、Hypothesis、工具预算或 Batch D 文档边界工作；等待用户明确确认 Batch B。
 
 ## Phase 5–7 独立严格审查（2026-07-18）
 
