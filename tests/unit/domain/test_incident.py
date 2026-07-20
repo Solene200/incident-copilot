@@ -46,3 +46,8 @@ def test_incident_rejects_invalid_time_window() -> None:
 def test_incident_rejects_extra_fields() -> None:
     with pytest.raises(ValidationError, match="Extra inputs"):
         make_incident(untrusted_field="value")
+
+
+def test_incident_rejects_multiple_primary_services() -> None:
+    with pytest.raises(ValidationError, match="exactly one primary service"):
+        make_incident(services=["payment-service", "checkout-service"])

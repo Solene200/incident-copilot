@@ -59,11 +59,17 @@ def main() -> None:
         "POST",
         f"{base_url}/api/v1/investigations",
         {
-            "query": "payment-service error rate increased and requests timed out",
+            "query": (
+                "payment-service error rate increased with database connection acquisition timeouts"
+            ),
             "services": ["payment-service"],
             "start_time": start_time.isoformat(),
             "end_time": end_time.isoformat(),
-            "symptoms": ["elevated error rate", "request timeouts"],
+            "symptoms": [
+                "elevated error rate",
+                "request timeouts",
+                "database connection acquisition timeout",
+            ],
             "severity": "sev2",
             "environment": "production",
         },
@@ -95,6 +101,8 @@ def main() -> None:
                 "report_id": report["report_id"],
                 "disposition": report["disposition"],
                 "supporting_evidence_count": len(report["supporting_evidence"]),
+                "contradicting_evidence_count": len(report["contradicting_evidence"]),
+                "rejected_hypothesis_count": len(report["rejected_hypotheses"]),
                 "prometheus_citation_count": sum(
                     str(item.get("uri", "")).startswith("http://prometheus:9090/")
                     for item in citations

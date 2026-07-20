@@ -29,6 +29,7 @@ from incident_copilot.domain.hypothesis import Hypothesis
 from incident_copilot.domain.report import (
     IncidentReport,
     InvestigationStats,
+    RejectedHypothesis,
     RemediationStep,
     TimelineEvent,
 )
@@ -271,7 +272,7 @@ class InvestigationNodes:
         """在模型之外强制校验证据外键和置信度策略。
 
         State 读取: evidence、hypotheses。
-        State 写入: 过滤无效 Evidence ID 并按独立来源数校准后的 hypotheses。
+        State 写入: 过滤无效 Evidence ID、从证据推导服务,并按显式规则排序后的 hypotheses。
         """
         evidence_by_id = {item.evidence_id: item for item in state.get("evidence", ())}
         verified: list[Hypothesis] = []
@@ -285,27 +286,52 @@ class InvestigationNodes:
                 if item in evidence_by_id and item not in supporting_ids
             )
             supporting_sources = {evidence_by_id[item].source_type for item in supporting_ids}
-            status = (
-                HypothesisStatus.SUPPORTED
-                if supporting_ids and len(supporting_sources) >= 2
-                else HypothesisStatus.INCONCLUSIVE
-            )
+            contradicting_sources = {evidence_by_id[item].source_type for item in contradicting_ids}
+            if contradicting_ids and len(contradicting_sources) >= len(supporting_sources):
+                status = HypothesisStatus.REJECTED
+            elif supporting_ids and len(supporting_sources) >= 2:
+                status = HypothesisStatus.SUPPORTED
+            else:
+                status = HypothesisStatus.INCONCLUSIVE
             confidence = hypothesis.confidence
-            if not supporting_ids:
+            if status is HypothesisStatus.REJECTED or not supporting_ids:
                 confidence = min(confidence, 0.2)
             elif len(supporting_sources) < 2:
                 confidence = min(confidence, 0.55)
+            affected_services = tuple(
+                dict.fromkeys(
+                    evidence_by_id[item].service
+                    for item in (*supporting_ids, *contradicting_ids)
+                    if evidence_by_id[item].service is not None
+                )
+            )
             verified.append(
                 Hypothesis.model_validate(
                     {
                         **hypothesis.model_dump(mode="python"),
                         "supporting_evidence_ids": supporting_ids,
                         "contradicting_evidence_ids": contradicting_ids,
+                        "affected_services": affected_services,
                         "confidence": confidence,
                         "status": status,
                     }
                 )
             )
+        status_rank = {
+            HypothesisStatus.SUPPORTED: 0,
+            HypothesisStatus.INVESTIGATING: 1,
+            HypothesisStatus.PROPOSED: 2,
+            HypothesisStatus.INCONCLUSIVE: 3,
+            HypothesisStatus.REJECTED: 4,
+        }
+        verified.sort(
+            key=lambda item: (
+                status_rank[item.status],
+                -item.confidence,
+                -len(item.supporting_evidence_ids),
+                item.hypothesis_id,
+            )
+        )
         return {"hypotheses": tuple(verified)}
 
     @trace_async("incident_copilot.node.judge_evidence", component="node")
@@ -368,7 +394,15 @@ class InvestigationNodes:
         hypotheses = state.get("hypotheses", ())
         leading = hypotheses[0] if hypotheses else None
         supporting_ids = leading.supporting_evidence_ids if leading is not None else ()
-        contradicting_ids = leading.contradicting_evidence_ids if leading is not None else ()
+        rejected = tuple(item for item in hypotheses if item.status is HypothesisStatus.REJECTED)
+        contradicting_ids = tuple(
+            dict.fromkeys(
+                item
+                for hypothesis in rejected
+                for item in hypothesis.contradicting_evidence_ids
+                if item not in supporting_ids
+            )
+        )
         supporting = tuple(
             evidence_by_id[item] for item in supporting_ids if item in evidence_by_id
         )
@@ -377,6 +411,13 @@ class InvestigationNodes:
         )
         if not supporting:
             supporting = tuple(item for item in evidence if item.relevance_score >= 0.75)[:20]
+        affected_services = (
+            leading.affected_services
+            if leading is not None and leading.affected_services
+            else tuple(
+                dict.fromkeys(item.service for item in supporting if item.service is not None)
+            )
+        )
         citations = tuple(
             {
                 item.citation.citation_id: item.citation for item in (*supporting, *contradicting)
@@ -417,10 +458,19 @@ class InvestigationNodes:
                 else 0.0
             ),
             confidence_rationale=draft.confidence_rationale,
-            affected_services=state["incident"].services,
+            affected_services=affected_services,
             timeline=timeline,
             supporting_evidence=supporting,
             contradicting_evidence=contradicting,
+            rejected_hypotheses=tuple(
+                RejectedHypothesis(
+                    hypothesis_id=item.hypothesis_id,
+                    description=item.description,
+                    rejection_reason=item.reasoning_summary,
+                    evidence_ids=item.contradicting_evidence_ids,
+                )
+                for item in rejected
+            ),
             remediation_steps=tuple(
                 RemediationStep(
                     action=action,
@@ -698,6 +748,7 @@ class InvestigationNodes:
             incident_id=incident.incident_id,
             service=incident.services[0],
             raw_query=incident.raw_query,
+            symptoms=incident.symptoms,
             start_time=incident.start_time,
             end_time=incident.end_time,
             research_round=round_number or state["research_round"],

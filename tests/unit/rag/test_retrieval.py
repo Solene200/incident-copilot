@@ -54,18 +54,33 @@ def knowledge_root() -> Path:
     return Path(__file__).parents[3] / "data" / "knowledge"
 
 
-def test_query_rewrite_is_transparent_deterministic_and_bilingual() -> None:
+def test_query_rewrite_is_transparent_deterministic_bilingual_and_unbiased() -> None:
     rewriter = QueryRewriter()
 
-    first = rewriter.rewrite("支付服务 数据库 连接池 超时")
-    second = rewriter.rewrite("支付服务 数据库 连接池 超时")
+    first = rewriter.rewrite("库存服务 数据库 连接池 超时")
+    second = rewriter.rewrite("库存服务 数据库 连接池 超时")
 
     assert first == second
-    assert "payment-service" in first
     assert "database" in first
     assert "connection" in first
     assert "pool" in first
     assert "timeout" in first
+    assert "payment-service" not in first
+    assert "acquisition" not in first
+
+
+@pytest.mark.parametrize(
+    ("query", "expected"),
+    [
+        ("DNS name lookup timed-out", {"dns", "resolution", "timeout"}),
+        ("cache caching regression", {"cache", "regression"}),
+        ("db connection issue", {"db", "database", "connection"}),
+    ],
+)
+def test_query_rewrite_normalizes_generic_scenario_synonyms(query: str, expected: set[str]) -> None:
+    rewritten = set(QueryRewriter().rewrite(query).split())
+
+    assert expected <= rewritten
 
 
 def test_search_query_rejects_text_without_searchable_tokens() -> None:

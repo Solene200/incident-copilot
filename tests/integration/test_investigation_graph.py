@@ -2,6 +2,7 @@
 
 import asyncio
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
@@ -11,6 +12,7 @@ from incident_copilot.graph.bootstrap import build_offline_investigation_graph
 from incident_copilot.graph.builder import build_investigation_graph, create_initial_state
 from incident_copilot.graph.model import FakeModelProvider
 from incident_copilot.graph.schemas import (
+    HypothesesOutput,
     InvestigationOptions,
     ModelContext,
     ModelResponse,
@@ -58,10 +60,110 @@ async def test_fixture_graph_generates_citable_evidence_report() -> None:
     assert len({item.source_type for item in state["evidence"]}) >= 2
     assert report_ids
     assert report_ids <= state_ids
+    cited_evidence = (*report.supporting_evidence, *report.contradicting_evidence)
     assert {item.citation_id for item in report.citations} == {
-        item.citation.citation_id for item in report.supporting_evidence
+        item.citation.citation_id for item in cited_evidence
     }
     assert all(set(item.evidence_ids) <= state_ids for item in report.timeline)
+    assert len(state["hypotheses"]) >= 2
+    assert state["hypotheses"][0].status.value == "supported"
+    assert report.contradicting_evidence
+    assert report.rejected_hypotheses
+    assert report.affected_services == ("payment-service",)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("fixture_name", "expected_metric", "expected_operation"),
+    [
+        ("payment-service-pool-exhaustion.json", "db.pool.utilization", "POST /payments"),
+        ("checkout-service-dns-misconfiguration.json", "http.server.error_rate", "GET /checkout"),
+        (
+            "inventory-service-cache-regression.json",
+            "process.cpu.utilization",
+            "GET /inventory",
+        ),
+    ],
+)
+async def test_graph_builds_competing_evidence_backed_hypotheses_for_each_scenario(
+    fixture_name: str, expected_metric: str, expected_operation: str
+) -> None:
+    fixture = FixtureProvider.from_path(
+        Path(__file__).parents[2] / "data" / "incidents" / fixture_name
+    )
+    graph = build_offline_investigation_graph(fixture_provider=fixture, clock=fixed_clock)
+
+    state = await graph.ainvoke(create_initial_state(fixture.fixture.incident, clock=fixed_clock))
+
+    plan_by_tool = {step.tool_name: step for step in state["investigation_plan"].steps}
+    report = state["final_report"]
+    evidence_ids = {item.evidence_id for item in state["evidence"]}
+    cited_ids = {
+        item.evidence_id for item in (*report.supporting_evidence, *report.contradicting_evidence)
+    }
+    hypothesis_ids = {
+        evidence_id
+        for hypothesis in state["hypotheses"]
+        for evidence_id in (
+            *hypothesis.supporting_evidence_ids,
+            *hypothesis.contradicting_evidence_ids,
+        )
+    }
+    assert plan_by_tool["query_metrics"].arguments["metric_name"] == expected_metric
+    assert plan_by_tool["query_traces"].arguments["operation"] == expected_operation
+    assert len(state["hypotheses"]) >= 2
+    assert state["hypotheses"][0].status.value == "supported"
+    assert state["hypotheses"][-1].status.value == "rejected"
+    assert hypothesis_ids <= evidence_ids
+    assert cited_ids <= evidence_ids
+    assert report.supporting_evidence
+    assert report.contradicting_evidence
+    assert report.rejected_hypotheses
+    assert report.affected_services == (fixture.fixture.incident.services[0],)
+
+
+class ReorderedUntrustedHypothesesModel:
+    """交换返回顺序并注入格式合法但不存在的 Evidence ID。"""
+
+    def __init__(self) -> None:
+        self._base = FakeModelProvider()
+
+    async def complete(self, context: ModelContext) -> ModelResponse:
+        response = await self._base.complete(context)
+        if context.task is not ModelTask.HYPOTHESES:
+            return response
+        output = HypothesesOutput.model_validate(response.payload)
+        leading = output.hypotheses[-1].model_copy(
+            update={
+                "supporting_evidence_ids": (
+                    *output.hypotheses[-1].supporting_evidence_ids,
+                    "ev_fabricated_but_well_formed",
+                )
+            }
+        )
+        reordered = output.model_copy(update={"hypotheses": (leading, output.hypotheses[0])})
+        return ModelResponse(payload=reordered.model_dump(mode="json"), usage=response.usage)
+
+
+@pytest.mark.asyncio
+async def test_hypothesis_order_and_fabricated_ids_cannot_change_report_root_cause() -> None:
+    baseline_graph = build_offline_investigation_graph(clock=fixed_clock)
+    untrusted_graph = build_offline_investigation_graph(
+        model=ReorderedUntrustedHypothesesModel(), clock=fixed_clock
+    )
+
+    baseline = await baseline_graph.ainvoke(
+        create_initial_state(fixture_incident(), clock=fixed_clock)
+    )
+    untrusted = await untrusted_graph.ainvoke(
+        create_initial_state(fixture_incident(), clock=fixed_clock)
+    )
+
+    assert untrusted["final_report"].root_cause == baseline["final_report"].root_cause
+    assert all(
+        "ev_fabricated_but_well_formed" not in hypothesis.supporting_evidence_ids
+        for hypothesis in untrusted["hypotheses"]
+    )
 
 
 @pytest.mark.asyncio

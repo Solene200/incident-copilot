@@ -189,7 +189,7 @@ Graph 和模型只能请求左侧领域指标名，Adapter 再转换成右侧 Pr
 
 `SEARCH_TOKEN_PATTERN` 同时识别英文技术标识和单个中文字符；`HEADING_PATTERN` 识别一到六级 Markdown 标题。它们决定“如何切分和检索文本”，不是业务故障规则。
 
-QueryRewriter 的别名表是经过审核的确定性映射。例如“连接池”扩展为 `connection pool database`。原始词始终保留，不使用在线模型改写。
+QueryRewriter 的别名表是经过审核的确定性等价映射。例如“连接池”只扩展为 `connection pool`。原始词始终保留，不使用在线模型改写，也不追加 payment、database acquisition 等未经原查询表达的场景词。
 
 ## 9. 其他模块级常量和类型别名
 

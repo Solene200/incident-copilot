@@ -6,7 +6,7 @@
   "contains_sensitive_data": false,
   "incident": {
     "incident_id": "inc_payment_20260718_001",
-    "raw_query": "payment-service error rate increased between 10:20 and 10:40 and some requests timed out",
+    "raw_query": "payment-service error rate increased between 10:20 and 10:40 with database connection acquisition timeouts",
     "services": [
       "payment-service"
     ],
@@ -14,7 +14,8 @@
     "end_time": "2026-07-18T10:40:00+08:00",
     "symptoms": [
       "elevated error rate",
-      "request timeouts"
+      "request timeouts",
+      "database connection acquisition timeout"
     ],
     "severity": "sev2",
     "environment": "production",

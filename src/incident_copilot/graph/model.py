@@ -7,6 +7,7 @@ payload 被视为不可信 JSON, 必须由 ``nodes.py`` 使用任务对应的 Py
 
 import hashlib
 from datetime import timedelta
+from enum import StrEnum
 from typing import Protocol
 
 from pydantic import JsonValue
@@ -25,6 +26,17 @@ from incident_copilot.graph.schemas import (
     SufficiencyOutput,
     stable_query_key,
 )
+
+PlanSpec = tuple[str, SourceType, str, dict[str, object], int]
+
+
+class InvestigationScenario(StrEnum):
+    """Fake Planner 可解释、互斥且不依赖样例身份的场景分类。"""
+
+    DATABASE_POOL = "database_connection_pool"
+    DNS = "dns_name_resolution"
+    CACHE = "cache_regression"
+    GENERAL = "general_service_degradation"
 
 
 class ModelProvider(Protocol):
@@ -107,89 +119,7 @@ class FakeModelProvider:
         start = context.start_time
         end = context.end_time
         if context.research_round == 1:
-            specs: tuple[tuple[str, SourceType, str, dict[str, object], int], ...] = (
-                (
-                    "search_logs",
-                    SourceType.LOG,
-                    "Find database acquisition failures in the incident window.",
-                    {
-                        "service": service,
-                        "start_time": start.isoformat(),
-                        "end_time": end.isoformat(),
-                        "query": "connection acquisition",
-                        "limit": 10,
-                    },
-                    100,
-                ),
-                (
-                    "query_metrics",
-                    SourceType.METRIC,
-                    "Measure database pool saturation.",
-                    {
-                        "service": service,
-                        "start_time": start.isoformat(),
-                        "end_time": end.isoformat(),
-                        "metric_name": "db.pool.utilization",
-                        "aggregation": "max",
-                        "limit": 10,
-                    },
-                    100,
-                ),
-                (
-                    "query_traces",
-                    SourceType.TRACE,
-                    "Locate the blocking span on timed-out payment requests.",
-                    {
-                        "service": service,
-                        "start_time": start.isoformat(),
-                        "end_time": end.isoformat(),
-                        "operation": "POST /payments",
-                        "status": "timeout",
-                        "limit": 10,
-                    },
-                    95,
-                ),
-                (
-                    "get_recent_changes",
-                    SourceType.CHANGE,
-                    "Check configuration changes immediately before impact.",
-                    {
-                        "service": service,
-                        "start_time": (start - timedelta(minutes=30)).isoformat(),
-                        "end_time": end.isoformat(),
-                        "change_type": "configuration",
-                        "limit": 10,
-                    },
-                    95,
-                ),
-                (
-                    "get_service_topology",
-                    SourceType.TOPOLOGY,
-                    "Identify critical dependencies for alternative hypotheses.",
-                    {"service": service, "at_time": start.isoformat(), "depth": 1, "limit": 10},
-                    80,
-                ),
-                (
-                    "search_runbooks",
-                    SourceType.KNOWLEDGE,
-                    "Find a vetted connection pool timeout runbook.",
-                    {"service": service, "query": "connection pool timeout", "limit": 5},
-                    75,
-                ),
-                (
-                    "search_similar_incidents",
-                    SourceType.KNOWLEDGE,
-                    "Compare prior incidents with the same failure signature.",
-                    {
-                        "service": service,
-                        "query": "connection pool timeout",
-                        "before_time": start.isoformat(),
-                        "lookback_days": 90,
-                        "limit": 5,
-                    },
-                    70,
-                ),
-            )
+            specs = self._initial_specs(context)
         elif follow_up_specs := self._follow_up_specs(context):
             specs = follow_up_specs
         else:
@@ -250,10 +180,141 @@ class FakeModelProvider:
             )
         )
         return PlanOutput(
-            objective=f"Explain {service} failures using independent, citable evidence.",
+            objective=(
+                f"Explain {service} failures for the {self._scenario(context).value} scenario "
+                "using independent, citable evidence."
+            ),
             steps=steps,
             rationale=(
                 "Collect symptoms, causal changes, dependency context, and operational knowledge."
+            ),
+        )
+
+    @staticmethod
+    def _scenario(context: ModelContext) -> InvestigationScenario:
+        """只从公开上下文和当前证据文本分类,不读取 incident ID 或 fixture 元数据。"""
+        evidence_text = " ".join(
+            str(item.get("summary", "")) for item in context.evidence_summaries
+        )
+        text = " ".join((context.raw_query, *context.symptoms, evidence_text)).casefold()
+        if any(term in text for term in ("dns", "name resolution", "name lookup", "resolver")):
+            return InvestigationScenario.DNS
+        if any(term in text for term in ("cache", "ttl", "read amplification")):
+            return InvestigationScenario.CACHE
+        if any(
+            term in text
+            for term in ("connection pool", "connection acquisition", "db pool", "pool saturation")
+        ):
+            return InvestigationScenario.DATABASE_POOL
+        return InvestigationScenario.GENERAL
+
+    def _initial_specs(self, context: ModelContext) -> tuple[PlanSpec, ...]:
+        """把场景规则转换为六类通用证据查询; pool 额外查询相似事故。"""
+        scenario = self._scenario(context)
+        service = context.service
+        start = context.start_time
+        end = context.end_time
+        route_name = service.removesuffix("-service")
+        if scenario is InvestigationScenario.DATABASE_POOL:
+            log_query = "connection acquisition"
+            metric_name, aggregation = "db.pool.utilization", "max"
+            operation = f"POST /{route_name}s"
+            knowledge_query = "connection pool timeout"
+        elif scenario is InvestigationScenario.DNS:
+            log_query = "DNS lookup timeout"
+            metric_name, aggregation = "http.server.error_rate", "rate"
+            operation = f"GET /{route_name}"
+            knowledge_query = "DNS resolver lookup timeout"
+        elif scenario is InvestigationScenario.CACHE:
+            log_query = "cache miss"
+            metric_name, aggregation = "process.cpu.utilization", "max"
+            operation = f"GET /{route_name}"
+            knowledge_query = "cache TTL read amplification"
+        else:
+            log_query = "timeout"
+            metric_name, aggregation = "http.server.error_rate", "rate"
+            operation = f"GET /{route_name}"
+            knowledge_query = "service timeout"
+        common_range = {
+            "service": service,
+            "start_time": start.isoformat(),
+            "end_time": end.isoformat(),
+        }
+        specs: tuple[PlanSpec, ...] = (
+            (
+                "search_logs",
+                SourceType.LOG,
+                f"Find {scenario.value} symptoms in service logs.",
+                {**common_range, "query": log_query, "limit": 10},
+                100,
+            ),
+            (
+                "query_metrics",
+                SourceType.METRIC,
+                f"Measure the primary signal for {scenario.value}.",
+                {
+                    **common_range,
+                    "metric_name": metric_name,
+                    "aggregation": aggregation,
+                    "limit": 10,
+                },
+                100,
+            ),
+            (
+                "query_traces",
+                SourceType.TRACE,
+                "Locate the blocking or timed-out request span.",
+                {
+                    **common_range,
+                    "operation": operation,
+                    "status": "timeout",
+                    "limit": 10,
+                },
+                95,
+            ),
+            (
+                "get_recent_changes",
+                SourceType.CHANGE,
+                "Check configuration changes immediately before impact.",
+                {
+                    **common_range,
+                    "start_time": (start - timedelta(minutes=30)).isoformat(),
+                    "change_type": "configuration",
+                    "limit": 10,
+                },
+                95,
+            ),
+            (
+                "get_service_topology",
+                SourceType.TOPOLOGY,
+                "Identify critical dependencies for a competing hypothesis.",
+                {"service": service, "at_time": start.isoformat(), "depth": 1, "limit": 10},
+                80,
+            ),
+            (
+                "search_runbooks",
+                SourceType.KNOWLEDGE,
+                f"Find vetted guidance for {scenario.value}.",
+                {"service": service, "query": knowledge_query, "limit": 5},
+                75,
+            ),
+        )
+        if scenario is not InvestigationScenario.DATABASE_POOL:
+            return specs
+        return (
+            *specs,
+            (
+                "search_similar_incidents",
+                SourceType.KNOWLEDGE,
+                "Compare prior incidents with the same failure signature.",
+                {
+                    "service": service,
+                    "query": knowledge_query,
+                    "before_time": start.isoformat(),
+                    "lookback_days": 90,
+                    "limit": 5,
+                },
+                70,
             ),
         )
 
@@ -357,45 +418,131 @@ class FakeModelProvider:
         return tuple(specs)
 
     def _hypotheses(self, context: ModelContext) -> HypothesesOutput:
-        """只使用当前高相关证据摘要构造可验证假设和 Evidence ID 外键。"""
-        relevant: list[dict[str, JsonValue]] = []
-        for item in context.evidence_summaries:
-            score = item.get("relevance_score", 0.0)
-            if isinstance(score, (int, float)) and not isinstance(score, bool) and score >= 0.75:
-                relevant.append(item)
-        supporting_ids = tuple(str(item["evidence_id"]) for item in relevant[:20])
-        evidence_summary = " ".join(
-            str(item.get("summary", "")).strip() for item in relevant[:3]
-        ).strip()
-        description = (
-            f"The leading evidence pattern for {context.service} is: {evidence_summary}"
-            if evidence_summary
-            else f"The available evidence does not yet establish a cause for {context.service}."
-        )[:2_000]
-        hypothesis_digest = hashlib.sha256(
-            f"{context.incident_id}|{'|'.join(supporting_ids)}".encode()
+        """从证据语义构造一个领先假设和一个可证伪的竞争假设。"""
+        scenario = self._scenario(context)
+        relevant = tuple(
+            item
+            for item in context.evidence_summaries
+            if self._numeric_score(item.get("relevance_score")) >= 0.75
+        )
+        lead_sources = {SourceType.LOG.value, SourceType.METRIC.value, SourceType.CHANGE.value}
+        supporting = tuple(
+            str(item["evidence_id"])
+            for item in relevant
+            if str(item.get("source_type")) in lead_sources
+        )[:20]
+        topology = tuple(
+            str(item["evidence_id"])
+            for item in relevant
+            if str(item.get("source_type")) == SourceType.TOPOLOGY.value
+        )[:5]
+        trace = tuple(
+            str(item["evidence_id"])
+            for item in relevant
+            if str(item.get("source_type")) == SourceType.TRACE.value
+        )[:5]
+        summaries = " ".join(
+            str(item.get("summary", "")).strip()
+            for item in relevant
+            if str(item.get("evidence_id")) in supporting
+        )[:1_400]
+        lead_text, alternative_text = self._hypothesis_text(scenario, context.service)
+        leading = self._make_hypothesis(
+            context=context,
+            role="leading",
+            description=f"{lead_text} Evidence: {summaries}"[:2_000],
+            supporting_ids=supporting,
+            contradicting_ids=(),
+            confidence=min(0.9, 0.5 + len(supporting) * 0.1),
+            verification_query="Correlate the suspected configuration with symptoms and metrics.",
+            reasoning=(
+                "The rule selected mutually reinforcing log, metric, and change evidence from the "
+                "current evidence packet; it did not read evaluator labels or fixture identity."
+            ),
+        )
+        alternative = self._make_hypothesis(
+            context=context,
+            role="alternative",
+            description=alternative_text,
+            supporting_ids=topology,
+            contradicting_ids=trace,
+            confidence=0.35,
+            verification_query="Check whether the dependency was slow before the local failure.",
+            reasoning=(
+                "Topology makes this dependency hypothesis plausible, but the cited request trace "
+                "places the blocking work in the local scenario-specific path and therefore "
+                "rejects it."
+            ),
+        )
+        # 故意不按置信度返回,证明可信验证节点而非 Provider 返回顺序负责排序。
+        return HypothesesOutput(hypotheses=(alternative, leading))
+
+    @staticmethod
+    def _numeric_score(value: JsonValue | None) -> float:
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return float(value)
+        return 0.0
+
+    @staticmethod
+    def _hypothesis_text(scenario: InvestigationScenario, service: str) -> tuple[str, str]:
+        if scenario is InvestigationScenario.DATABASE_POOL:
+            return (
+                f"A database connection pool limit regression saturated {service} and caused "
+                "connection acquisition timeouts.",
+                "An external downstream dependency caused the request timeouts.",
+            )
+        if scenario is InvestigationScenario.DNS:
+            return (
+                f"A DNS resolver configuration regression made name resolution unreachable for "
+                f"{service}, causing lookup timeouts.",
+                "The downstream application dependency itself caused the request timeouts.",
+            )
+        if scenario is InvestigationScenario.CACHE:
+            return (
+                f"A cache TTL configuration regression disabled effective caching in {service}, "
+                "causing cache misses and database read amplification.",
+                "Database capacity alone caused the latency regression.",
+            )
+        return (
+            f"A recent configuration regression caused the observed degradation in {service}.",
+            "A downstream dependency caused the observed degradation.",
+        )
+
+    @staticmethod
+    def _make_hypothesis(
+        *,
+        context: ModelContext,
+        role: str,
+        description: str,
+        supporting_ids: tuple[str, ...],
+        contradicting_ids: tuple[str, ...],
+        confidence: float,
+        verification_query: str,
+        reasoning: str,
+    ) -> Hypothesis:
+        digest = hashlib.sha256(
+            "|".join(
+                (context.service, role, *supporting_ids, "against", *contradicting_ids)
+            ).encode("utf-8")
         ).hexdigest()[:24]
-        hypothesis = Hypothesis(
-            hypothesis_id=f"hyp_{hypothesis_digest}",
+        return Hypothesis(
+            hypothesis_id=f"hyp_{digest}",
             description=description,
-            affected_services=(context.service,),
+            affected_services=(),
             supporting_evidence_ids=supporting_ids,
-            confidence=min(0.9, 0.35 + len(supporting_ids) * 0.08),
+            contradicting_evidence_ids=contradicting_ids,
+            confidence=confidence,
             status=HypothesisStatus.PROPOSED,
             verification_queries=(
                 VerificationQuery(
-                    query="Compare the leading symptoms with changes and independent signals.",
-                    source_types=(SourceType.METRIC, SourceType.LOG, SourceType.CHANGE),
+                    query=verification_query,
+                    source_types=(SourceType.METRIC, SourceType.LOG, SourceType.TRACE),
                     service=context.service,
                 ),
             ),
-            reasoning_summary=(
-                "This deterministic fake groups only high-relevance cited summaries; it does not "
-                "use fixture ground truth or claim general diagnostic ability."
-            ),
+            reasoning_summary=reasoning,
             version=context.research_round,
         )
-        return HypothesesOutput(hypotheses=(hypothesis,))
 
     def _judge(self, context: ModelContext) -> SufficiencyOutput:
         """根据来源覆盖、研究轮次和假设存在性产生结构化充分性建议。"""

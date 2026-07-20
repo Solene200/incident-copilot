@@ -4,11 +4,49 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 当前已完成阶段 | Phase 7；简历最终版优化 Batch A |
-| 下一阶段 | 等待用户确认后执行 Batch B；不得自动进入 |
+| 当前已完成阶段 | Phase 7；简历最终版优化 Batch B |
+| 下一阶段 | 等待用户确认；不得自动进入 Batch C |
 | 最近更新 | 2026-07-20 |
 | 仓库初始状态 | 空目录，无 `.git` 元数据 |
 | 当前运行环境 | Windows / PowerShell；Python 3.13 可用 |
+
+## 简历最终版优化 Batch B — 核心调查正确性（2026-07-20）
+
+### 完成内容
+
+- 关闭 IC-P1-01：`ModelContext` 增加 symptoms；Fake Planner 只根据 raw query、symptoms、primary service 和已有 Evidence 摘要分类，分别生成 database pool、DNS/name resolution、cache regression 三类计划，未读取 ground truth、fixture 名称或 incident ID。
+- 关闭 IC-P1-04：默认 Graph 生成 leading 与 competing 两个假设；验证节点过滤伪造 Evidence ID，根据支持/反证来源判定 supported/rejected；最终报告保留 supporting evidence、contradicting evidence、rejected hypothesis 和真实 Citation。
+- 关闭 IC-P1-05：`IncidentContext` 明确限制为一个 primary service；Hypothesis 的 affected services 由有效证据引用推导，报告不再复制 incident 输入。
+- 关闭 IC-P2-01：验证节点按 status、confidence、支持证据数和稳定 ID 排序。集成测试交换模型返回顺序并注入格式合法的伪造 Evidence ID，根因保持不变且伪造 ID 被删除。
+- 关闭 IC-P2-04：Query Rewrite 只保留通用等价词，不再从 checkout 注入 payment，也不从 pool 注入 acquisition/database；三类查询有独立回归测试。
+- inventory fixture 的公开症状增加 cache miss，指标与 evaluation 既有期望统一为 `process.cpu.utilization/max`；payment fixture 的公开描述明确包含 connection acquisition timeout。规则没有使用 evaluator 标签。
+
+### 测试与评估
+
+- 定向 Ruff/mypy 运行发现并修正 9 个样式问题；定向 Graph/Domain/RAG 测试最终为 39 passed。
+- 新增三场景 Graph 集成断言，覆盖 log query、metric、operation、至少两个假设、supported/rejected 排序、正反证、引用外键和证据推导服务。
+- 新评估产物位于 `artifacts/evaluation/batch-b-core-correctness/`，最终 run ID `evalrun_20260720T090453Z_3b34b1ee`：3/3 completed、0 failed；工具选择 F1 与参数准确率均为 1.0，根因准确率与三层 Citation 指标均为 1.0。
+- Evidence relevance F1 为 0.5167，已按原指标口径真实保留；该指标只评估 leading supporting evidence，不包含竞争假设反证。
+
+### 全量验收
+
+| 检查 | 结果 |
+| --- | --- |
+| `uv lock --check` | PASS：74 packages |
+| `uv run ruff format --check .` | PASS：110 files |
+| `uv run ruff check .` | PASS |
+| `uv run mypy src tests scripts` | PASS：110 source files |
+| `uv run pytest` | PASS：217 passed in 3.58s |
+| Graph 文档检查 | PASS：`GRAPH_CURRENT.md` current |
+| Learning Guide 生成 | FAIL：既有 IC-P1-07，仍缺 `src/incident_copilot/core/clock.py` 精读链接；属于 Batch D，未跨批修复 |
+| CLI Demo | PASS：probable；2 个竞争假设、3 supporting、1 contradicting、1 rejected；affected service 来自证据；7 tool calls |
+| RAG ingest/search | PASS：6 documents / 18 chunks；runbook Top-2 均带可解析 citation；固定查询 Recall@3 1.0、MRR 由 7/9 更新为 5/6 |
+| API/SSE/HITL Demo | PASS：50 events；waiting_review → accept → completed；3 supporting、1 contradicting、1 rejected；初始/恢复 run ID 不同 |
+| 离线 Evaluation | PASS：最终 run `evalrun_20260720T090453Z_3b34b1ee`，3/3 completed、0 failed |
+
+第一次全量复检真实发现 Query Rewrite 改变固定 RAG 排名，且 runbook 一度被挤出 Top-3；没有放宽测试，而是补回通用双向 database/db 与 timeout/timed out/latency 同义词。Recall@3 恢复为 1.0，runbook 从旧排名 3 提升到 2，精确排名与 MRR 断言同步为新确定性结果。提交前另一次复检发现 API Demo 需 Ruff 格式化，执行格式化后完整门禁再次通过。
+
+Batch B 到此停止，不进入工具重试与预算 Batch C。
 
 ## 简历最终版优化 Batch A — Evidence 与 Citation 可信度（2026-07-20）
 

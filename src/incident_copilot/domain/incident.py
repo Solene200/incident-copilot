@@ -22,8 +22,8 @@ class IncidentContext(DomainModel):
     incident_id: str = Field(pattern=r"^inc_[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
     # 用户提交的原始故障描述和调查问题。
     raw_query: str = Field(min_length=1, max_length=10_000)
-    # 调查范围内的服务名称集合。
-    services: tuple[str, ...] = Field(default_factory=tuple, max_length=20)
+    # 当前版本只接受一个由调用方明确提供的 primary service。
+    services: tuple[str, ...]
     # 故障调查时间窗口的起点。
     start_time: AwareDatetime
     # 故障调查时间窗口的终点。
@@ -42,7 +42,10 @@ class IncidentContext(DomainModel):
     @field_validator("services")
     @classmethod
     def validate_services(cls, values: tuple[str, ...]) -> tuple[str, ...]:
-        return normalize_services(values)
+        normalized = normalize_services(values)
+        if len(normalized) != 1:
+            raise ValueError("current version requires exactly one primary service")
+        return normalized
 
     @field_validator("symptoms")
     @classmethod

@@ -335,7 +335,23 @@
 - [x] `uv lock --check`、Ruff format/check、`mypy src tests scripts`、206 项全量测试和 Graph 文档检查通过；CLI、RAG、API/SSE/HITL Demo 通过。
 - [ ] Learning Guide 生成仍被既有 IC-P1-07 阻断：`core/clock.py` 缺少源码精读链接。该问题明确属于 Batch D，本批已实际运行并记录失败，没有跨批修改。
 
-## 12. 跨阶段质量门禁
+## 12. 简历最终版优化 Batch B：核心调查正确性
+
+### 状态
+
+`completed`（2026-07-20）；按用户协议完成远端提交后停止，不自动进入 Batch C。
+
+### 实际验收
+
+- [x] Planner 使用 raw query、symptoms、single primary service 和已有 Evidence 摘要，生成 database pool、DNS/name resolution、cache regression 三类不同计划；规则不读取 ground truth、fixture 名称或 incident ID。
+- [x] 默认调查生成至少两个竞争假设；可信节点过滤 Evidence 外键，生成 supporting、contradicting、supported/rejected 状态及 rejected hypothesis 报告链。
+- [x] Hypothesis 以 status、confidence、支持证据数和稳定 ID 确定性排序；交换 Provider 返回顺序不改变报告根因。
+- [x] Incident 输入限制为单 primary service；affected services 从已验证假设引用的 Evidence 服务推导，不复制输入。
+- [x] Query Rewrite 只做通用同义词归一，不再注入 payment/database-pool 相关词。
+- [x] 新 Evaluation 产物为 `artifacts/evaluation/batch-b-core-correctness/`：3/3 completed、0 failed，tool selection F1、tool argument accuracy、root-cause accuracy 和三层 Citation 指标均为 1.0；Evidence relevance F1 0.5167 原样保留。
+- [x] 全量锁文件、Ruff、mypy、217 项 pytest 和 Graph 检查通过；CLI、RAG、API/SSE/HITL、离线 Evaluation 通过。Learning Guide 的既有 IC-P1-07 失败已真实记录并留给 Batch D。
+
+## 13. 跨阶段质量门禁
 
 Phase 1 起每阶段至少运行：
 

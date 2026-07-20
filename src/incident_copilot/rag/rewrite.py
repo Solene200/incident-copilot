@@ -5,23 +5,27 @@ from typing import ClassVar
 
 
 class QueryRewriter:
-    """不调用 LLM,只展开经过审核的小型别名表。"""
+    """不调用 LLM,只做不改变调查意图的通用同义词归一化。"""
 
     # 中文短语出现时追加的已审核英文检索别名。
     _phrase_expansions: ClassVar[dict[str, str]] = {
-        "连接池": "connection pool database",
-        "数据库": "database db postgres",
-        "超时": "timeout latency",
-        "支付服务": "payment-service checkout",
+        "连接池": "connection pool",
+        "数据库": "database",
+        "超时": "timeout",
+        "域名解析": "dns resolution",
+        "缓存": "cache",
         "历史故障": "historical incident",
     }
-    # 单个英文 Token 出现时追加的同义词和相关词。
+    # 仅追加等价写法,不追加具体服务、供应商或未经查询表达的根因词。
     _token_expansions: ClassVar[dict[str, tuple[str, ...]]] = {
-        "db": ("database", "postgres"),
-        "postgresql": ("postgres", "database"),
+        "db": ("database",),
+        "database": ("db",),
+        "postgresql": ("postgres",),
+        "postgres": ("postgresql",),
         "timeout": ("latency", "timed", "out"),
-        "checkout": ("payment-service", "payment"),
-        "pool": ("connections", "acquisition"),
+        "timed-out": ("timeout",),
+        "dns": ("resolution",),
+        "caching": ("cache",),
     }
 
     def rewrite(self, query: str) -> str:

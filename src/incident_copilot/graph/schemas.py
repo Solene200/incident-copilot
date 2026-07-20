@@ -279,6 +279,8 @@ class ModelContext(DomainModel):
     service: str = Field(min_length=1, max_length=128)
     # 用户提交的原始调查问题。
     raw_query: str = Field(min_length=1, max_length=10_000)
+    # 用户已经观察到的症状; Planner 只能使用公开调查上下文和已收集证据。
+    symptoms: tuple[str, ...] = Field(default_factory=tuple, max_length=50)
     # 调查证据时间窗口起点。
     start_time: AwareDatetime
     # 调查证据时间窗口终点。

@@ -93,9 +93,9 @@ def test_fixed_retrieval_regression_queries_report_actual_fixture_metrics() -> N
 
     assert observed_rankings == [
         (
-            "doc_service_payment_service",
             "doc_incident_payment_pool_20260628",
             "doc_runbook_payment_db_pool",
+            "doc_service_payment_service",
         ),
         (
             "doc_service_payment_service",
@@ -109,4 +109,4 @@ def test_fixed_retrieval_regression_queries_report_actual_fixture_metrics() -> N
         ),
     ]
     assert recall_at_3 == 1.0
-    assert mean_reciprocal_rank == 7 / 9
+    assert mean_reciprocal_rank == 5 / 6

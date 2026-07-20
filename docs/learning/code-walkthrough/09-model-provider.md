@@ -46,7 +46,7 @@ Token 用字符数近似，必须标记 `estimated=True`。输入来自 Node 的
 
 ## Plan：只生成有界只读步骤
 
-`_plan` 首轮产生七类工具计划；后续轮调用 `_follow_up_specs`，把 judge 或人工反馈的 `VerificationQuery` 映射为已有 Tool Schema。
+`_plan` 首轮先从 raw query、symptoms、primary service 与已有 Evidence 摘要选择 database pool、DNS、cache 或 general 场景，再生成六类通用证据查询；pool 场景额外查询相似事故。规则不读取 incident ID、fixture 名称或 ground truth。后续轮调用 `_follow_up_specs`，把 judge 或人工反馈的 `VerificationQuery` 映射为已有 Tool Schema。
 
 ```python
 queries = (
@@ -61,17 +61,17 @@ if len(specs) == 20:
 
 人工反馈不能注入任意可执行代码，只能变成来源类型允许的查询，并有 20 步上限。Node 随后还会检查 Registry allow-list、重算 query key。修改这个映射会改变下一轮 pending steps，但不会直接选择下一节点。
 
-## Hypothesis：只引用当前证据摘要
+## Hypothesis：竞争解释与真实 Evidence 外键
 
 ```python
-for item in context.evidence_summaries:
-    score = item.get("relevance_score", 0.0)
-    if isinstance(score, (int, float)) and not isinstance(score, bool) and score >= 0.75:
-        relevant.append(item)
-supporting_ids = tuple(str(item["evidence_id"]) for item in relevant[:20])
+scenario = self._scenario(context)
+relevant = tuple(
+    item for item in context.evidence_summaries
+    if self._numeric_score(item.get("relevance_score")) >= 0.75
+)
 ```
 
-Fake 只读取 Context 中高相关 Evidence 摘要，不读 Evaluation ground truth。`bool` 在 Python 是 `int` 子类，所以显式排除，防止 `True` 被当作分数。输出的 Evidence ID 仍由 verify Node 做外键检查。
+Fake 只读取 Context 中高相关 Evidence 摘要，不读 Evaluation ground truth。它生成 leading 与 dependency alternative 两个可证伪假设，并故意不按置信度返回；验证节点负责外键过滤、状态判定和稳定排序。默认报告因此能展示 supporting evidence、竞争假设的 contradicting evidence 与明确 rejected reason。
 
 ## Judge 与 Report 草稿
 

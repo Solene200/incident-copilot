@@ -35,6 +35,9 @@
 4. 无支持证据时 confidence 上限为 0.2。
 5. 只有单一来源时 confidence 上限为 0.55。
 6. 至少两个来源才允许标记 supported。
+7. 反证来源不少于支持来源时标记 rejected。
+8. affected services 从有效 Evidence 引用推导。
+9. 按 status、confidence、支持证据数和稳定 ID 排序。
 
 删除这一步会让模型可以引用不存在的 Evidence, 或用单条日志给出高置信结论。
 

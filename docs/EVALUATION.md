@@ -77,6 +77,25 @@ schema 2.0 新产物位于 `artifacts/evaluation/batch-a-citation-integrity/`。
 
 这些数值只描述 2026-07-20 在当前 Windows/Python 3.13 机器上的一次固定 fixture 运行。三个 Citation 指标证明本次报告能回到仓库内不可变来源并复算内容，不覆盖 live HTTP 来源。样例少且与 Fake Model/知识库同仓，其他 1.0 指标不能解释为生产准确率；时延也不是稳定 benchmark。工具参数与 Evidence relevance 的非满分结果被原样保留。
 
+## Batch B 核心调查正确性
+
+Batch B 使用独立目录 `artifacts/evaluation/batch-b-core-correctness/` 在最终代码上重新运行，run ID 为 `evalrun_20260720T090453Z_3b34b1ee`，3/3 样例完成、0 个失败。本次 Planner 只读取 raw query、symptoms、primary service 和已收集 Evidence 摘要；不接收 ground truth、fixture 文件名或 evaluator sample ID。
+
+| 指标 | 实际值 |
+| --- | ---: |
+| 服务定位准确率 | 1.0000 |
+| 故障类型准确率 | 1.0000 |
+| Retrieval Recall@K / MRR | 1.0000 / 1.0000 |
+| 工具选择 F1 | 1.0000 |
+| 工具参数准确率 | 1.0000 |
+| Evidence relevance F1 | 0.5167 |
+| Citation reference / locator / integrity | 1.0000 / 1.0000 / 1.0000 |
+| 根因准确率 | 1.0000 |
+| 平均轮数 / 工具调用 | 1.0000 / 6.3333 |
+| 总 Token / 平均 Token | 15,193 / 5,064.3333（estimated） |
+
+Evidence relevance 的 0.5167 原样保留：当前报告把 request trace 用作竞争假设的反证，而该指标只以 leading hypothesis 的 `supporting_evidence` 为预测集合，不把 `contradicting_evidence` 或 rejected hypothesis 的 supporting IDs 计入预测。该口径没有为本批修改；此结果也不应外推为生产诊断质量。
+
 ## 可观测性
 
 OpenTelemetry 默认关闭且不会导入可选包。节点、工具和结构化模型调用分别使用 `incident_copilot.node.*`、`incident_copilot.tool.execute`、`incident_copilot.model.structured_complete` span 名称。启用方式：

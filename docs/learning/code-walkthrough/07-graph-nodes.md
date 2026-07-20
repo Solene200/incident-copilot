@@ -92,14 +92,15 @@ supporting_ids = tuple(
     item for item in hypothesis.supporting_evidence_ids if item in evidence_by_id
 )
 supporting_sources = {evidence_by_id[item].source_type for item in supporting_ids}
-status = (
-    HypothesisStatus.SUPPORTED
-    if supporting_ids and len(supporting_sources) >= 2
-    else HypothesisStatus.INCONCLUSIVE
-)
+if contradicting_ids and len(contradicting_sources) >= len(supporting_sources):
+    status = HypothesisStatus.REJECTED
+elif supporting_ids and len(supporting_sources) >= 2:
+    status = HypothesisStatus.SUPPORTED
+else:
+    status = HypothesisStatus.INCONCLUSIVE
 ```
 
-模型伪造的 Evidence ID 被删除；至少两个独立来源才能标记 SUPPORTED，否则置信度上限为 0.55，无支持证据则上限 0.2。输出覆盖 `hypotheses`，下一节点固定 judge。删除 verify 会让模型自由文本越过证据完整性约束。
+模型伪造的 Evidence ID 被删除；服务从有效证据引用推导。反证来源不少于支持来源时标记 REJECTED；至少两个支持来源才能标记 SUPPORTED，否则执行置信度上限。最后按 status、confidence、支持证据数和稳定 ID 排序，因此 Provider 返回顺序不决定 root cause。
 
 ## `judge_evidence`：模型意见与确定性规则相交
 
